@@ -13,6 +13,9 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 toml = { version = "0.8", default-features = false, features = ["parse"] }
 zygisk-rs = { git = "https://github.com/Kr328/zygisk-rs", rev = "bf277f9a", default-features = false, features = ["v4"]}
 
+[build-dependencies]
+cc = "1.0"
+
 [lib]
 name = "zygisk"
 crate-type = ["cdylib"]
