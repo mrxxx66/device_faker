@@ -11,15 +11,16 @@ mkdir -p "$CONFIG_DIR"
 chmod 755 "$CONFIG_DIR"
 
 if [ -f "$CONFIG_FILE" ]; then
-    ui_print "- 检测到已有配置文件，保留现有配置"
-    chmod 644 "$CONFIG_FILE"
-    chcon u:object_r:system_file:s0 "$CONFIG_FILE" 2>/dev/null || true
-else
-    ui_print "- 复制默认配置文件"
-    cp -f "$MODPATH/config.toml" "$CONFIG_FILE"
-    chmod 644 "$CONFIG_FILE"
-    chcon u:object_r:system_file:s0 "$CONFIG_FILE" 2>/dev/null || true
+    ui_print "- 检测到已有配置文件，备份旧配置"
+    cp -f "$CONFIG_FILE" "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
+    chmod 644 "$CONFIG_FILE"*
+    chcon u:object_r:system_file:s0 "$CONFIG_FILE"* 2>/dev/null || true
 fi
+
+ui_print "- 复制最新默认配置文件"
+cp -f "$MODPATH/config.toml" "$CONFIG_FILE"
+chmod 644 "$CONFIG_FILE"
+chcon u:object_r:system_file:s0 "$CONFIG_FILE" 2>/dev/null || true
 
 chcon u:object_r:system_file:s0 "$CONFIG_DIR" 2>/dev/null || true
 
