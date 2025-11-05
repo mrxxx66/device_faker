@@ -91,7 +91,6 @@ model = "2509FPN0BC"
 device = "Xiaomi 15 Pro"
 product = "popsicle"
 name = "popsicle"  # 产品内部名称（仅 full 模式生效）
-fingerprint = "Xiaomi/2509FPN0BC/Xiaomi15Pro:14/UP1A.231005.007/V816.0.3.0.VNBCNXM:user/release-keys"
 mode = "full"  # 可选：覆盖全局模式
 
 [[apps]]
@@ -136,16 +135,16 @@ model = "SM-S9280"
 ### 应用配置字段说明
 
 **字段与系统属性映射关系**:
-| 字段 | 对应系统属性 | 说明 |
-|------|------------|------|
-| `manufacturer` | `ro.product.manufacturer` | 制造商 (如: Xiaomi, Samsung) |
-| `brand` | `ro.product.brand` | 品牌 (如: Redmi, Nothing) |
-| `marketname` | `ro.product.marketname` | 市场名称 (如: REDMI K90 Pro Max) |
-| `model` | `ro.product.model` | 型号 (如: 25102RK69C) |
-| `name` | `ro.product.name` | 产品名称 (如: myron) |
-| `device` | `ro.product.device` | 设备代号 (如: myron) |
-| `product` | `ro.build.product` | 构建产品 (如: myron) |
-| `fingerprint` | `ro.build.fingerprint` | 指纹信息 |
+| 字段 | lite 模式 | full 模式 (SystemProperties) | 说明 |
+|------|----------|------------------------------|------|
+| `manufacturer` | `Build.MANUFACTURER` | + `ro.product.manufacturer` | 制造商 (如: Xiaomi, Samsung) |
+| `brand` | `Build.BRAND` | + `ro.product.brand` | 品牌 (如: Redmi, Nothing) |
+| `model` | `Build.MODEL` | + `ro.product.model` | 型号 (如: 2210132G) |
+| `device` | `Build.DEVICE` | (仅 Build 字段) | 设备代号 (如: fuxi) |
+| `product` | `Build.PRODUCT` | + `ro.product.device` | 产品标识 (如: fuxi) |
+| `fingerprint` | `Build.FINGERPRINT` | + `ro.build.fingerprint` | 指纹信息 |
+| `name` | ❌ | `ro.product.name` | 产品名称 (如: fuxi) |
+| `marketname` | ❌ | `ro.product.marketname` | 市场名称 (如: REDMI K90 Pro Max) |
 
 **注意**:
 - 除了 `package` 外,所有字段都是可选的

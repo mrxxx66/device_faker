@@ -35,21 +35,6 @@ device = "REDMAGIC 9 Pro"
 product = "NX769J"
 fingerprint = "nubia/NX769J/NX769J:14/UKQ1.230917.001/20240813.173312:user/release-keys"
 
-[templates.xiaomi_13_pro]
-packages = [
-    "com.levelinfinite.sgameGlobal",
-    "com.tencent.tmgp.sgame",
-    "com.pubg.krmobile",
-    "com.netflix.mediaclient",
-]
-manufacturer = "Xiaomi"
-brand = "Xiaomi"
-model = "2210132G"
-device = "Xiaomi 13 Pro"
-product = "2210132G"
-name = "fuxi"  # 产品内部名称（仅 full 模式生效）
-fingerprint = "Xiaomi/fuxi_eea/fuxi:13/TKQ1.221114.001/OS2.0.102.0.VMCEUXM:user/release-keys"
-
 # 需要完整模式的模板示例（如果某些应用需要 SystemProperties Hook）
 # [templates.special_device_full]
 # packages = [

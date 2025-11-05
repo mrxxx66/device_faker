@@ -136,6 +136,7 @@ impl Config {
     }
 
     /// 构建合并配置的系统属性映射
+    /// 注意：仅用于 full 模式的 SystemProperties Hook
     pub fn build_merged_property_map(merged: &MergedAppConfig) -> HashMap<String, String> {
         let mut map = HashMap::new();
 
@@ -154,11 +155,8 @@ impl Config {
         if let Some(name) = &merged.name {
             map.insert("ro.product.name".to_string(), name.clone());
         }
-        if let Some(device) = &merged.device {
-            map.insert("ro.product.device".to_string(), device.clone());
-        }
         if let Some(product) = &merged.product {
-            map.insert("ro.build.product".to_string(), product.clone());
+            map.insert("ro.product.device".to_string(), product.clone());
         }
         if let Some(fingerprint) = &merged.fingerprint {
             map.insert("ro.build.fingerprint".to_string(), fingerprint.clone());
