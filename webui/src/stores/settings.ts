@@ -16,8 +16,8 @@ export const useSettingsStore = defineStore('settings', () => {
     if (stored) {
       try {
         settings.value = JSON.parse(stored)
-      } catch (e) {
-        console.error('Failed to parse settings:', e)
+      } catch {
+        // 使用默认设置
       }
     }
   }

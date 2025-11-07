@@ -17,7 +17,6 @@ export const useAppsStore = defineStore('apps', () => {
       installedApps.value = await getInstalledApps()
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
-      console.error('Failed to load installed apps:', e)
     } finally {
       loading.value = false
     }

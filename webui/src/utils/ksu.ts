@@ -1,51 +1,20 @@
 import { exec, listPackages, getPackagesInfo, getPackagesIcon } from 'kernelsu-alt'
 
-// KernelSU API 类型定义
-declare global {
-  interface Window {
-    ksu?: {
-      exec(command: string, args: string, callback: string): void
-      fullScreen(enabled: boolean): void
-      getPackagesInfo?(
-        packageName: string
-      ): Promise<{ appLabel: string; versionName: string; versionCode: number }>
-      listPackages?(type: 'user' | 'system'): Promise<string[]>
-    }
-    $packageManager?: {
-      getApplicationInfo(
-        packageName: string,
-        flags: number,
-        userId: number
-      ): {
-        getLabel(): string
-      }
-    }
-  }
-}
-
 // 执行命令
 export async function execCommand(command: string): Promise<string> {
   // 开发模式下的模拟数据
   if (import.meta.env?.DEV) {
-    if (import.meta.env.VITE_DEBUG) {
-      console.warn('[DEV] execCommand:', command)
-    }
     return new Promise((resolve) => {
       setTimeout(() => resolve(''), 100)
     })
   }
 
   // 使用 kernelsu-alt 的 exec
-  try {
-    const result = await exec(command)
-    if (result.errno === 0) {
-      return result.stdout || ''
-    } else {
-      throw new Error(result.stderr || `Command failed with error code ${result.errno}`)
-    }
-  } catch (error) {
-    console.error('[execCommand] Error:', error)
-    throw error
+  const result = await exec(command)
+  if (result.errno === 0) {
+    return result.stdout || ''
+  } else {
+    throw new Error(result.stderr || `Command failed with error code ${result.errno}`)
   }
 }
 
@@ -87,18 +56,12 @@ export async function getInstalledApps() {
     // 使用 kernelsu-alt 的 listPackages API
     try {
       const [userPkgs, systemPkgs] = await Promise.all([
-        listPackages('user').catch((e) => {
-          console.warn('[getInstalledApps] Failed to get user packages:', e)
-          return []
-        }),
-        listPackages('system').catch((e) => {
-          console.warn('[getInstalledApps] Failed to get system packages:', e)
-          return []
-        }),
+        listPackages('user').catch(() => []),
+        listPackages('system').catch(() => []),
       ])
       packageList = [...userPkgs, ...systemPkgs]
-    } catch (e) {
-      console.error('[getInstalledApps] kernelsu-alt API failed:', e)
+    } catch {
+      // Fallback to pm list packages
     }
 
     // Fallback: 使用 pm list packages
@@ -106,8 +69,7 @@ export async function getInstalledApps() {
       try {
         const packages = await execCommand('pm list packages | cut -d: -f2')
         packageList = packages.split('\n').filter((p) => p.trim())
-      } catch (e) {
-        console.error('[getInstalledApps] pm list packages failed:', e)
+      } catch {
         return []
       }
     }
@@ -149,8 +111,7 @@ export async function getInstalledApps() {
           versionName,
           versionCode,
         })
-      } catch (e) {
-        console.warn(`[getInstalledApps] Failed to get info for ${pkg}:`, e)
+      } catch {
         // 即使获取信息失败，也添加基本信息
         apps.push({
           packageName: pkg,
@@ -163,8 +124,7 @@ export async function getInstalledApps() {
     }
 
     return apps
-  } catch (error) {
-    console.error('[getInstalledApps] Fatal error:', error)
+  } catch {
     return []
   }
 }

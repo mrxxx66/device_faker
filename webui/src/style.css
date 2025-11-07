@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --primary: #0ea5e9;
@@ -9,27 +7,27 @@
   --accent-light: #c084fc;
   --gradient-start: #0ea5e9;
   --gradient-end: #a855f7;
-  --background: #F9FAFB;
-  --card-bg: #FFFFFF;
-  --text: #1F2937;
-  --text-secondary: #6B7280;
-  --border: #E5E7EB;
+  --background: #f9fafb;
+  --card-bg: #ffffff;
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
   --shadow: rgba(0, 0, 0, 0.05);
 }
 
 .dark {
   --background: #0f172a;
   --card-bg: #1e293b;
-  --text: #F3F4F6;
+  --text: #f3f4f6;
   --text-secondary: #94a3b8;
   --border: #334155;
   --shadow: rgba(0, 0, 0, 0.4);
-  
+
   /* Element Plus 深色模式变量覆盖 */
   --el-bg-color: #1e293b;
   --el-bg-color-page: #0f172a;
   --el-bg-color-overlay: #1e293b;
-  --el-text-color-primary: #F3F4F6;
+  --el-text-color-primary: #f3f4f6;
   --el-text-color-regular: #94a3b8;
   --el-text-color-secondary: #64748b;
   --el-text-color-placeholder: #475569;
@@ -58,10 +56,15 @@
 
 html,
 body {
-  height: 100%;
+  min-height: 100%; /* 改为最小高度,允许内容超出 */
   margin: 0;
   padding: 0;
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Roboto',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   background: var(--background);
   color: var(--text);
   transition: all 0.3s ease;
@@ -73,7 +76,7 @@ body {
 }
 
 #app {
-  height: 100%;
+  min-height: 100%; /* 改为最小高度，允许内容超出 */
   width: 100%;
 }
 
@@ -136,12 +139,25 @@ body {
 /* 确保 dialog overlay 关闭后完全移除 */
 .el-overlay {
   pointer-events: auto;
-  z-index: 2000;
+  z-index: 2000 !important;
+  backdrop-filter: blur(8px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+  background-color: rgba(0, 0, 0, 0.35) !important;
 }
 
 .el-overlay.is-message-box {
   pointer-events: auto;
-  z-index: 3000;
+  z-index: 3000 !important;
+  backdrop-filter: blur(12px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
+  background-color: rgba(0, 0, 0, 0.45) !important;
+}
+
+/* 深色模式下的遮罩层 */
+.dark .el-overlay.is-message-box {
+  backdrop-filter: blur(12px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
 }
 
 /* 确保底部导航栏始终可点击，但要低于Dialog */
@@ -246,8 +262,20 @@ body {
   z-index: 2000 !important;
 }
 
+/* MessageBox 需要更高的 z-index */
+.el-overlay.is-message-box {
+  z-index: 3000 !important;
+}
+
+.el-message-box__wrapper {
+  z-index: 3001 !important;
+}
+
+.el-message-box {
+  z-index: 3001 !important;
+}
+
 .el-dialog,
-.el-message-box,
 .el-notification,
 .el-message,
 .el-drawer {
@@ -259,4 +287,204 @@ body {
 .el-picker-panel,
 .el-popper {
   z-index: 2002 !important;
+}
+
+/* 删除确认框样式 */
+.delete-confirm-box {
+  z-index: 3001 !important;
+}
+
+.delete-confirm-box.el-message-box {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* 确保 MessageBox 的父容器也有正确的 z-index */
+.el-message-box__wrapper.delete-confirm-box {
+  z-index: 3001 !important;
+}
+
+/* MessageBox 居中显示修复 */
+.el-message-box__wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 1rem !important;
+  margin: 0 !important;
+}
+
+/* 强制覆盖 Element Plus 的默认样式 */
+.el-overlay .el-message-box__wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.el-message-box {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  max-width: 420px !important;
+  width: 90% !important;
+  min-width: 280px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25) !important;
+  text-align: left !important;
+}
+
+/* 更高优先级的选择器 */
+.el-overlay.is-message-box .el-message-box {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+}
+
+/* MessageBox 头部优化 */
+.el-message-box__header {
+  padding: 1.25rem 1.5rem 0.75rem !important;
+  position: relative !important;
+}
+
+/* 关闭按钮位置修复 */
+.el-message-box__headerbtn {
+  position: absolute !important;
+  top: 1.25rem !important;
+  right: 1.25rem !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.el-message-box__headerbtn:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .el-message-box__headerbtn:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.el-message-box__close {
+  font-size: 18px !important;
+  color: var(--el-text-color-secondary) !important;
+}
+
+/* MessageBox 按钮样式优化 */
+.el-message-box__btns {
+  display: flex !important;
+  gap: 0.75rem !important;
+  padding: 1rem 1.5rem !important;
+}
+
+.el-message-box__btns .el-button {
+  flex: 1 !important;
+  margin: 0 !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 8px !important;
+  font-size: 0.9375rem !important;
+  font-weight: 500 !important;
+}
+
+/* 危险操作按钮（删除按钮）样式 */
+.el-message-box__btns .el-button--primary {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+}
+
+.el-message-box__btns .el-button--primary:hover {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+
+.el-message-box__btns .el-button--primary:active {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+}
+
+/* MessageBox 内容区域优化 */
+.el-message-box__content {
+  padding: 1.5rem !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.6 !important;
+}
+
+.el-message-box__header {
+  padding: 1.25rem 1.5rem 0.75rem !important;
+}
+
+.el-message-box__title {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+/* 深色模式下的 MessageBox 样式增强 */
+.dark .el-message-box {
+  background-color: var(--el-bg-color-overlay) !important;
+  border: 1px solid var(--el-border-color) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .el-message-box__header {
+  border-bottom: 1px solid var(--el-border-color) !important;
+}
+
+.dark .el-message-box__title {
+  color: var(--el-text-color-primary) !important;
+}
+
+.dark .el-message-box__content {
+  color: var(--el-text-color-primary) !important;
+}
+
+/* 额外的强制居中样式 - 使用最高优先级 */
+div.el-overlay.is-message-box {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+div.el-overlay.is-message-box > div.el-message-box__wrapper {
+  position: static !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 auto !important;
+  padding: 1rem !important;
+}
+
+div.el-message-box__wrapper > div.el-message-box {
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  transform: translate(0, 0) !important;
+  margin: 0 auto !important;
+}
+
+/* 确保内容区域正确对齐 */
+.el-message-box__container {
+  text-align: left !important;
 }

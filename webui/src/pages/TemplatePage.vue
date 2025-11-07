@@ -38,6 +38,12 @@
             <span class="detail-label">Fingerprint:</span>
             <span class="detail-value fingerprint">{{ template.fingerprint }}</span>
           </div>
+          <div v-if="template.mode" class="detail-item">
+            <span class="detail-label">模式:</span>
+            <span class="detail-value">{{
+              template.mode === 'lite' ? 'lite (轻量)' : 'full (完整)'
+            }}</span>
+          </div>
           <div v-if="template.packages && template.packages.length > 0" class="detail-item">
             <span class="detail-label">应用包名:</span>
             <span class="detail-value">{{ template.packages.length }} 个</span>
@@ -62,6 +68,7 @@
       :destroy-on-close="true"
       :z-index="2001"
       class="template-dialog"
+      modal-class="template-dialog-modal"
     >
       <el-form :model="formData" label-width="120px" label-position="top">
         <el-form-item label="模板名称">
@@ -107,6 +114,13 @@
             :rows="3"
             placeholder="例如：nubia/NX769J/NX769J:14/UKQ1.230917.001/20240813.173312:user/release-keys"
           />
+        </el-form-item>
+
+        <el-form-item label="工作模式 (可选)">
+          <el-select v-model="formData.mode" placeholder="留空使用全局默认模式" clearable>
+            <el-option label="lite - 轻量模式（推荐，隐蔽性好）" value="lite" />
+            <el-option label="full - 完整模式（全面伪装，可能被检测）" value="full" />
+          </el-select>
         </el-form-item>
 
         <el-form-item label="应用包名列表 (可选)">
@@ -186,6 +200,7 @@ const formData = ref({
   name_field: '',
   marketname: '',
   fingerprint: '',
+  mode: '',
   packages: [] as string[],
 })
 
@@ -202,6 +217,7 @@ function showAddDialog() {
     name_field: '',
     marketname: '',
     fingerprint: '',
+    mode: '',
     packages: [],
   }
   dialogVisible.value = true
@@ -220,6 +236,7 @@ function editTemplate(name: string, template: Template) {
     name_field: template.name || '',
     marketname: template.marketname || '',
     fingerprint: template.fingerprint || '',
+    mode: template.mode || '',
     packages: template.packages || [],
   }
   dialogVisible.value = true
@@ -295,6 +312,10 @@ async function saveTemplate() {
     template.marketname = formData.value.marketname
   }
 
+  if (formData.value.mode) {
+    template.mode = formData.value.mode as 'lite' | 'full'
+  }
+
   if (formData.value.packages.length > 0) {
     template.packages = formData.value.packages
   }
@@ -316,6 +337,9 @@ async function deleteTemplateConfirm(name: string) {
       confirmButtonText: '删除',
       cancelButtonText: '取消',
       type: 'warning',
+      appendTo: 'body',
+      customClass: 'delete-confirm-box',
+      modalClass: 'delete-confirm-modal',
     })
 
     configStore.deleteTemplate(name)
@@ -596,6 +620,23 @@ onActivated(() => {
   max-height: calc(100vh - 80px - 10vh) !important; /* 减去底栏高度和顶部边距 */
   display: flex;
   flex-direction: column;
+  /* 增强的毛玻璃效果 */
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(40px) saturate(150%) brightness(1.1);
+  -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* 深色模式下的毛玻璃效果 */
+@media (prefers-color-scheme: dark) {
+  .template-dialog :deep(.el-dialog) {
+    background: rgba(20, 20, 20, 0.6) !important;
+    backdrop-filter: blur(40px) saturate(150%) brightness(0.9);
+    -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
 }
 
 .template-dialog :deep(.el-dialog__body) {
@@ -604,17 +645,102 @@ onActivated(() => {
   padding: 1.5rem;
   padding-bottom: 2rem; /* 增加底部内边距 */
   max-height: calc(100vh - 200px); /* 确保有足够的滚动空间 */
+  background: transparent;
+}
+
+.template-dialog :deep(.el-dialog__header) {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .template-dialog :deep(.el-dialog__header) {
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 .template-dialog :deep(.el-dialog__footer) {
   padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-  background: var(--card-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   flex-shrink: 0; /* 防止底部按钮区域被压缩 */
 }
 
-/* 确保 Dialog 遮罩层在底栏之上 */
-:deep(.el-overlay) {
+@media (prefers-color-scheme: dark) {
+  .template-dialog :deep(.el-dialog__footer) {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* 确保 Dialog 遮罩层在底栏之上，并添加模糊效果 */
+.template-dialog :deep(.el-overlay) {
   z-index: 2000 !important;
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .template-dialog :deep(.el-overlay) {
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
+}
+</style>
+
+<style>
+/* 全局样式：Dialog 遮罩层毛玻璃效果 */
+.template-dialog-modal {
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .template-dialog-modal {
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
+}
+
+/* 删除确认框的毛玻璃效果 */
+.delete-confirm-modal {
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .delete-confirm-modal {
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
+}
+
+.delete-confirm-box {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(40px) saturate(150%) brightness(1.1) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(1.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .delete-confirm-box {
+    background: rgba(20, 20, 20, 0.6) !important;
+    backdrop-filter: blur(40px) saturate(150%) brightness(0.9) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 </style>

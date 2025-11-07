@@ -33,6 +33,25 @@ export default tseslint.config(
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
+      globals: {
+        // 浏览器全局变量
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        IntersectionObserver: 'readonly',
+        HTMLElement: 'readonly',
+        btoa: 'readonly',
+        atob: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+      },
     },
 
     rules: {

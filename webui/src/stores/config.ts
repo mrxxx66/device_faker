@@ -34,7 +34,6 @@ export const useConfigStore = defineStore('config', () => {
       }
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
-      console.error('Failed to load config:', e)
     } finally {
       loading.value = false
     }
@@ -50,7 +49,6 @@ export const useConfigStore = defineStore('config', () => {
       await writeFile(CONFIG_PATH, content)
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
-      console.error('Failed to save config:', e)
       throw e
     } finally {
       loading.value = false
@@ -65,8 +63,8 @@ export const useConfigStore = defineStore('config', () => {
       if (match) {
         moduleVersion.value = match[1].trim()
       }
-    } catch (e) {
-      console.error('Failed to load module version:', e)
+    } catch {
+      // 使用默认版本
     }
   }
 

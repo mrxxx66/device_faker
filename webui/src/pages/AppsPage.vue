@@ -82,6 +82,7 @@
       :destroy-on-close="true"
       :z-index="2001"
       class="app-config-dialog"
+      modal-class="app-config-modal"
     >
       <div class="config-options">
         <el-radio-group v-model="configMode">
@@ -105,22 +106,44 @@
       <div v-if="configMode === 'custom'" class="custom-config">
         <el-form :model="customFormData" label-width="120px" label-position="top">
           <el-form-item label="Manufacturer">
-            <el-input v-model="customFormData.manufacturer" />
+            <el-input v-model="customFormData.manufacturer" placeholder="如: Xiaomi, Samsung" />
           </el-form-item>
           <el-form-item label="Brand">
-            <el-input v-model="customFormData.brand" />
+            <el-input v-model="customFormData.brand" placeholder="如: Redmi, Nothing" />
           </el-form-item>
           <el-form-item label="Model">
-            <el-input v-model="customFormData.model" />
+            <el-input v-model="customFormData.model" placeholder="如: 2210132G, SM-S9280" />
           </el-form-item>
           <el-form-item label="Device">
-            <el-input v-model="customFormData.device" />
+            <el-input v-model="customFormData.device" placeholder="如: REDMAGIC 9 Pro" />
           </el-form-item>
           <el-form-item label="Product">
-            <el-input v-model="customFormData.product" />
+            <el-input v-model="customFormData.product" placeholder="如: 2210132G, SM-S9280" />
+          </el-form-item>
+          <el-form-item label="Name（仅 full 模式生效）">
+            <el-input v-model="customFormData.name" placeholder="如: fuxi" />
+          </el-form-item>
+          <el-form-item label="Market Name（，仅 full 模式生效）">
+            <el-input v-model="customFormData.marketname" placeholder="如: REDMI K90 Pro Max" />
           </el-form-item>
           <el-form-item label="Fingerprint">
-            <el-input v-model="customFormData.fingerprint" type="textarea" :rows="3" />
+            <el-input
+              v-model="customFormData.fingerprint"
+              type="textarea"
+              :rows="3"
+              placeholder="如: Xiaomi/fuxi/fuxi:14/UKQ1..."
+            />
+          </el-form-item>
+          <el-form-item label="Mode（模式）">
+            <el-select
+              v-model="customFormData.mode"
+              placeholder="留空使用全局默认"
+              clearable
+              style="width: 100%"
+            >
+              <el-option label="lite - 轻量模式（推荐）" value="lite" />
+              <el-option label="full - 完整模式" value="full" />
+            </el-select>
           </el-form-item>
         </el-form>
       </div>
@@ -212,7 +235,10 @@ const customFormData = ref({
   model: '',
   device: '',
   product: '',
+  name: '',
+  marketname: '',
   fingerprint: '',
+  mode: undefined as 'lite' | 'full' | undefined,
 })
 
 function getAppConfig(packageName: string) {
@@ -237,7 +263,10 @@ function configureApp(app: InstalledApp) {
         model: existingConfig.model || '',
         device: existingConfig.device || '',
         product: existingConfig.product || '',
+        name: existingConfig.name || '',
+        marketname: existingConfig.marketname || '',
         fingerprint: existingConfig.fingerprint || '',
+        mode: existingConfig.mode as 'lite' | 'full' | undefined,
       }
     }
   } else {
@@ -287,7 +316,10 @@ async function saveAppConfig() {
       model: customFormData.value.model,
       device: customFormData.value.device,
       product: customFormData.value.product,
+      name: customFormData.value.name,
+      marketname: customFormData.value.marketname,
       fingerprint: customFormData.value.fingerprint,
+      mode: customFormData.value.mode,
     }
     configStore.setApp(appConfig)
   }
@@ -313,7 +345,6 @@ async function loadAppIcon(packageName: string) {
       try {
         const stream = pm.getApplicationIcon(packageName, 0, 0)
         if (!stream) {
-          console.warn(`No icon stream for ${packageName}`)
           appIcons.value[packageName] = 'fallback'
           return
         }
@@ -329,8 +360,8 @@ async function loadAppIcon(packageName: string) {
           appIcons.value[packageName] = `data:image/png;base64,${base64}`
           return
         }
-      } catch (webUiError) {
-        console.warn(`WebUI-X icon load failed for ${packageName}:`, webUiError)
+      } catch {
+        // Fallback to KernelSU API
       }
     }
 
@@ -341,14 +372,13 @@ async function loadAppIcon(packageName: string) {
         appIcons.value[packageName] = iconBase64
         return
       }
-    } catch (e) {
-      console.warn(`KernelSU API not available for ${packageName}:`, e)
+    } catch {
+      // Use fallback icon
     }
 
     // 如果没有可用的 API，停止加载动画
     appIcons.value[packageName] = 'fallback'
-  } catch (error) {
-    console.warn(`Failed to load icon for ${packageName}:`, error)
+  } catch {
     // 标记为失败，停止加载动画
     appIcons.value[packageName] = 'fallback'
   }
@@ -363,8 +393,8 @@ async function loadWrapInputStream() {
       const importFn = new Function('url', 'return import(url)')
       const module = await importFn(moduleUrl)
       window.wrapInputStream = module.wrapInputStream
-    } catch (error) {
-      console.error('❌ Failed to load wrapInputStream:', error)
+    } catch {
+      // wrapInputStream not available
     }
   }
 }
@@ -672,6 +702,23 @@ onUnmounted(() => {
   max-height: calc(100vh - 80px - 10vh) !important; /* 减去底栏高度和顶部边距 */
   display: flex;
   flex-direction: column;
+  /* 增强的毛玻璃效果 */
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(40px) saturate(150%) brightness(1.1);
+  -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(1.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* 深色模式下的毛玻璃效果 */
+@media (prefers-color-scheme: dark) {
+  .app-config-dialog :deep(.el-dialog) {
+    background: rgba(20, 20, 20, 0.6) !important;
+    backdrop-filter: blur(40px) saturate(150%) brightness(0.9);
+    -webkit-backdrop-filter: blur(40px) saturate(150%) brightness(0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
 }
 
 .app-config-dialog :deep(.el-dialog__body) {
@@ -680,17 +727,69 @@ onUnmounted(() => {
   padding: 1.5rem;
   padding-bottom: 2rem; /* 增加底部内边距 */
   max-height: calc(100vh - 200px); /* 确保有足够的滚动空间 */
+  background: transparent;
+}
+
+.app-config-dialog :deep(.el-dialog__header) {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-config-dialog :deep(.el-dialog__header) {
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 .app-config-dialog :deep(.el-dialog__footer) {
   padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-  background: var(--card-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   flex-shrink: 0; /* 防止底部按钮区域被压缩 */
 }
 
-/* 确保 Dialog 遮罩层在底栏之上 */
-:deep(.el-overlay) {
+@media (prefers-color-scheme: dark) {
+  .app-config-dialog :deep(.el-dialog__footer) {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* 确保 Dialog 遮罩层在底栏之上，并添加模糊效果 */
+.app-config-dialog :deep(.el-overlay) {
   z-index: 2000 !important;
+  backdrop-filter: blur(8px) brightness(0.7) !important;
+  -webkit-backdrop-filter: blur(8px) brightness(0.7) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-config-dialog :deep(.el-overlay) {
+    backdrop-filter: blur(8px) brightness(0.5) !important;
+    -webkit-backdrop-filter: blur(8px) brightness(0.5) !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+  }
+}
+</style>
+
+<style>
+/* 全局样式：Dialog 遮罩层毛玻璃效果 */
+.app-config-modal {
+  backdrop-filter: blur(12px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-config-modal {
+    backdrop-filter: blur(12px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
 }
 </style>

@@ -65,18 +65,12 @@ function handlePageChange(pageId: string) {
 
   if (currentPage.value !== pageId) {
     isChangingPage = true
-    const startTime = performance.now()
 
     // 使用 requestAnimationFrame 确保在下一帧切换，避免阻塞
     requestAnimationFrame(() => {
       currentPage.value = pageId
 
       nextTick(() => {
-        const endTime = performance.now()
-        if (import.meta.env.DEV) {
-          console.warn(`✅ Page switched to ${pageId} in ${(endTime - startTime).toFixed(2)}ms`)
-        }
-
         // 重置标志
         setTimeout(() => {
           isChangingPage = false
@@ -108,8 +102,12 @@ const currentPageComponent = computed(() => {
 watchEffect(() => {
   if (isDark.value) {
     document.documentElement.classList.add('dark')
+    // 深色模式：匹配深色毛玻璃效果
+    document.getElementById('theme-color')?.setAttribute('content', '#1a2538')
   } else {
     document.documentElement.classList.remove('dark')
+    // 浅色模式：匹配浅色毛玻璃效果
+    document.getElementById('theme-color')?.setAttribute('content', '#f2f9ff')
   }
 })
 
@@ -131,18 +129,22 @@ onMounted(() => {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh; /* 改为最小高度,允许内容超出视口 */
   background: var(--background);
-  padding: var(--safe-area-inset-top) var(--safe-area-inset-right) var(--safe-area-inset-bottom)
-    var(--safe-area-inset-left);
+  /* 移除顶部内边距,让顶栏延伸到状态栏 */
+  padding: 0 var(--safe-area-inset-right) var(--safe-area-inset-bottom) var(--safe-area-inset-left);
 }
 
 .app-header {
-  padding: 1rem;
+  /* 添加顶部内边距以适配状态栏 */
+  padding-top: calc(var(--safe-area-inset-top) + 1rem);
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 1rem;
   border-radius: 0 0 1rem 1rem;
   margin-bottom: 1rem;
   box-shadow: 0 4px 12px var(--shadow);
-  position: relative;
+  position: relative; /* 改为相对定位,不固定在视野 */
   overflow: hidden;
 }
 
@@ -180,7 +182,7 @@ onMounted(() => {
 
 .main-content {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: visible; /* 改为可见，不在这里滚动 */
   padding: 0 1rem;
   padding-bottom: 5.5rem; /* 为固定定位的底栏留出空间 */
 }
@@ -198,6 +200,18 @@ onMounted(() => {
   right: 0;
   z-index: 100; /* 正常显示时的优先级 */
   pointer-events: auto;
+  /* 添加真正的毛玻璃效果 */
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .bottom-nav {
+  background: rgba(30, 41, 59, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(51, 65, 85, 0.4);
 }
 
 .nav-item {
