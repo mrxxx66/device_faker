@@ -1,0 +1,198 @@
+import { exec, listPackages, getPackagesInfo, getPackagesIcon } from 'kernelsu-alt'
+
+// KernelSU API 类型定义
+declare global {
+  interface Window {
+    ksu?: {
+      exec(command: string, args: string, callback: string): void
+      fullScreen(enabled: boolean): void
+      getPackagesInfo?(
+        packageName: string
+      ): Promise<{ appLabel: string; versionName: string; versionCode: number }>
+      listPackages?(type: 'user' | 'system'): Promise<string[]>
+    }
+    $packageManager?: {
+      getApplicationInfo(
+        packageName: string,
+        flags: number,
+        userId: number
+      ): {
+        getLabel(): string
+      }
+    }
+  }
+}
+
+// 执行命令
+export async function execCommand(command: string): Promise<string> {
+  // 开发模式下的模拟数据
+  if (import.meta.env?.DEV) {
+    if (import.meta.env.VITE_DEBUG) {
+      console.warn('[DEV] execCommand:', command)
+    }
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(''), 100)
+    })
+  }
+
+  // 使用 kernelsu-alt 的 exec
+  try {
+    const result = await exec(command)
+    if (result.errno === 0) {
+      return result.stdout || ''
+    } else {
+      throw new Error(result.stderr || `Command failed with error code ${result.errno}`)
+    }
+  } catch (error) {
+    console.error('[execCommand] Error:', error)
+    throw error
+  }
+}
+
+// 读取文件
+export async function readFile(path: string): Promise<string> {
+  // 开发模式返回模拟数据
+  if (import.meta.env?.DEV) {
+    const { mockConfig, mockModuleProp } = await import('./mockData')
+    if (path.includes('config.toml')) {
+      return mockConfig
+    }
+    if (path.includes('module.prop')) {
+      return mockModuleProp
+    }
+    return ''
+  }
+
+  const content = await execCommand(`cat ${path}`)
+  return content.trim()
+}
+
+// 写入文件
+export async function writeFile(path: string, content: string): Promise<void> {
+  const escapedContent = content.replace(/'/g, "'\\''")
+  await execCommand(`echo '${escapedContent}' > ${path}`)
+}
+
+// 获取已安装应用列表
+export async function getInstalledApps() {
+  // 开发模式返回模拟数据
+  if (import.meta.env?.DEV) {
+    const { mockInstalledApps } = await import('./mockData')
+    return mockInstalledApps
+  }
+
+  try {
+    let packageList: string[] = []
+
+    // 使用 kernelsu-alt 的 listPackages API
+    try {
+      const [userPkgs, systemPkgs] = await Promise.all([
+        listPackages('user').catch((e) => {
+          console.warn('[getInstalledApps] Failed to get user packages:', e)
+          return []
+        }),
+        listPackages('system').catch((e) => {
+          console.warn('[getInstalledApps] Failed to get system packages:', e)
+          return []
+        }),
+      ])
+      packageList = [...userPkgs, ...systemPkgs]
+    } catch (e) {
+      console.error('[getInstalledApps] kernelsu-alt API failed:', e)
+    }
+
+    // Fallback: 使用 pm list packages
+    if (packageList.length === 0) {
+      try {
+        const packages = await execCommand('pm list packages | cut -d: -f2')
+        packageList = packages.split('\n').filter((p) => p.trim())
+      } catch (e) {
+        console.error('[getInstalledApps] pm list packages failed:', e)
+        return []
+      }
+    }
+
+    // 去重
+    packageList = Array.from(new Set(packageList))
+
+    const apps = []
+
+    // 批量获取应用信息
+    for (const pkg of packageList) {
+      try {
+        let appName = pkg
+        let versionName = ''
+        let versionCode = 0
+
+        // 使用 kernelsu-alt 的 getPackagesInfo API
+        try {
+          const info = await getPackagesInfo(pkg)
+          appName = info.appLabel || pkg
+          versionName = info.versionName || ''
+          versionCode = info.versionCode || 0
+        } catch {
+          // 尝试使用 WebUI-X packageManager API
+          if (typeof window.$packageManager !== 'undefined') {
+            try {
+              const info = window.$packageManager.getApplicationInfo(pkg, 0, 0)
+              appName = info.getLabel() || pkg
+            } catch {
+              // 静默失败，使用包名
+            }
+          }
+        }
+
+        apps.push({
+          packageName: pkg,
+          appName,
+          icon: '',
+          versionName,
+          versionCode,
+        })
+      } catch (e) {
+        console.warn(`[getInstalledApps] Failed to get info for ${pkg}:`, e)
+        // 即使获取信息失败，也添加基本信息
+        apps.push({
+          packageName: pkg,
+          appName: pkg,
+          icon: '',
+          versionName: '',
+          versionCode: 0,
+        })
+      }
+    }
+
+    return apps
+  } catch (error) {
+    console.error('[getInstalledApps] Fatal error:', error)
+    return []
+  }
+}
+
+// 检查文件是否存在
+export async function fileExists(path: string): Promise<boolean> {
+  try {
+    await execCommand(`test -f ${path}`)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// 创建目录
+export async function mkdir(path: string): Promise<void> {
+  await execCommand(`mkdir -p ${path}`)
+}
+
+// 导出 getPackagesIcon 供其他模块使用
+export { getPackagesIcon }
+
+export default {
+  execCommand,
+  readFile,
+  writeFile,
+  getInstalledApps,
+  fileExists,
+  mkdir,
+  getPackagesIcon,
+}

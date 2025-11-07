@@ -1,0 +1,10 @@
+dist
+dist-ssr
+coverage
+node_modules
+.vscode
+.idea
+*.min.js
+*.min.css
+auto-imports.d.ts
+components.d.ts
