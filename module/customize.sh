@@ -31,8 +31,8 @@ if [ -f "$CONFIG_FILE" ]; then
 
     if chooseport; then
         ui_print "- 已选择：使用模块默认配置"
-        ui_print "- 备份旧配置到: $CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
-        cp -f "$CONFIG_FILE" "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
+        ui_print "- 备份旧配置到: $CONFIG_FILE.$(date +%Y%m%d_%H%M%S).bak"
+        cp -f "$CONFIG_FILE" "$CONFIG_FILE.$(date +%Y%m%d_%H%M%S).bak"
         chmod 644 "$CONFIG_FILE"*
         chcon u:object_r:system_file:s0 "$CONFIG_FILE"* 2>/dev/null || true
     else
