@@ -27,6 +27,10 @@ default_mode = "lite"  # 推荐：轻量模式（隐藏性更好）
   - 可能被检测
   - 仅在 lite 不够用时使用
 
+- `"resetprop"` - Resetprop 模式
+  - 使用 resetprop 工具修改属性
+  - 支持修改只读属性（如 `ro.build.characteristics`）
+
 ### debug（调试模式）
 
 ```toml
@@ -145,6 +149,7 @@ model = "SM-S9280"
 | `fingerprint` | `Build.FINGERPRINT` | + `ro.build.fingerprint` | 指纹 |
 | `name` | ❌ | `ro.product.name` + `ro.product.device` | 代号 (如: xuanyuan) |
 | `marketname` | ❌ | `ro.product.marketname` | 型号 (如: REDMI K90 Pro Max) |
+| `characteristics` | ❌ | `ro.build.characteristics` | 特性 (如: tablet) - 仅 resetprop 模式生效 |
 
 **注意**:
 - 除了 `package` 外,所有字段都是可选的
@@ -152,18 +157,20 @@ model = "SM-S9280"
 - [[apps]] 中的字段会覆盖模板的配置
 - `name` 和 `marketname` 仅在 **full 模式**下有效(影响 SystemProperties)
 - `name` 字段在 full 模式下会同时伪装 `ro.product.name` 和 `ro.product.device`
+- `characteristics` 字段仅在 **resetprop 模式**下生效
 - **lite 模式**下,只有 `manufacturer`、`brand`、`model`、`device`、`product`、`fingerprint` 生效
 
 ## 模式对比
 
-| 特性 | lite 模式 ⭐ | full 模式 |
-|------|-------------|-----------|
-| Build 类伪装 | ✅ | ✅ |
-| SystemProperties 伪装 | ❌ | ✅ |
-| 模块可卸载 | ✅ | ❌ |
-| 隐蔽性 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| 被检测风险 | 极低 | 较低 |
-| 推荐度 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| 特性 | lite 模式 ⭐ | full 模式 | resetprop 模式 |
+|------|-------------|-----------|----------------|
+| Build 类伪装 | ✅ | ✅ | ✅ |
+| SystemProperties 伪装 | ❌ | ✅ | ✅ |
+| 只读属性修改 | ❌ | ❌ | ✅ |
+| 模块可卸载 | ✅ | ❌ | ❌ |
+| 隐蔽性 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| 被检测风险 | 极低 | 较低 | 较低 |
+| 推荐度 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
 
 ## 如何选择模式？
 
@@ -184,3 +191,6 @@ model = "SM-S9280"
 - 应用会读取 SystemProperties
 - lite 模式下仍能检测到真实机型
 - 不在乎被检测到模块
+
+**使用 resetprop 模式**：
+- 需要修改 `ro.build.characteristics` (如 QQ 平板模式)

@@ -25,6 +25,8 @@ pub struct DeviceTemplate {
     pub product: Option<String>,
     #[serde(default)]
     pub fingerprint: Option<String>,
+    #[serde(default)]
+    pub characteristics: Option<String>,
     /// 模板的工作模式（可选）
     #[serde(default)]
     pub mode: Option<String>,
@@ -50,16 +52,19 @@ pub struct AppConfig {
     pub product: Option<String>,
     #[serde(default)]
     pub fingerprint: Option<String>,
+    #[serde(default)]
+    pub characteristics: Option<String>,
     /// 工作模式：
     /// - "lite": 只修改 Build 类（轻量模式，可卸载模块）
     /// - "full": Build + SystemProperties Hook（完整模式，不可卸载）
+    /// - "resetprop": 使用 resetprop 工具修改属性（需要 Root，不可卸载）
     #[serde(default)]
     pub mode: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    /// 全局默认模式："lite" 或 "full"
+    /// 全局默认模式："lite", "full" 或 "resetprop"
     #[serde(default = "default_mode")]
     pub default_mode: String,
     /// 是否启用调试日志（默认关闭以提高隐蔽性）
@@ -107,6 +112,7 @@ impl Config {
                 device: app.device.clone(),
                 product: app.product.clone(),
                 fingerprint: app.fingerprint.clone(),
+                characteristics: app.characteristics.clone(),
                 mode: app
                     .mode
                     .clone()
@@ -125,6 +131,7 @@ impl Config {
                 device: template.device.clone(),
                 product: template.product.clone(),
                 fingerprint: template.fingerprint.clone(),
+                characteristics: template.characteristics.clone(),
                 mode: template
                     .mode
                     .clone()
@@ -136,7 +143,7 @@ impl Config {
     }
 
     /// 构建合并配置的系统属性映射
-    /// 注意：仅用于 full 模式的 SystemProperties Hook
+    /// 注意：仅用于 full 模式的 SystemProperties Hook 和 resetprop 模式
     /// 空字符串会被忽略，不会添加到映射中
     pub fn build_merged_property_map(merged: &MergedAppConfig) -> HashMap<String, String> {
         let mut map = HashMap::new();
@@ -165,12 +172,31 @@ impl Config {
             && !name.is_empty()
         {
             map.insert("ro.product.name".to_string(), name.clone());
+        }
+        if let Some(device) = &merged.device
+            && !device.is_empty()
+        {
+            map.insert("ro.product.device".to_string(), device.clone());
+        } else if let Some(name) = &merged.name
+            && !name.is_empty()
+        {
+            // Fallback to name if device is not set (legacy behavior)
             map.insert("ro.product.device".to_string(), name.clone());
         }
+
         if let Some(fingerprint) = &merged.fingerprint
             && !fingerprint.is_empty()
         {
             map.insert("ro.build.fingerprint".to_string(), fingerprint.clone());
+        }
+
+        if let Some(characteristics) = &merged.characteristics
+            && !characteristics.is_empty()
+        {
+            map.insert(
+                "ro.build.characteristics".to_string(),
+                characteristics.clone(),
+            );
         }
 
         map
@@ -188,5 +214,6 @@ pub struct MergedAppConfig {
     pub device: Option<String>,
     pub product: Option<String>,
     pub fingerprint: Option<String>,
+    pub characteristics: Option<String>,
     pub mode: String,
 }

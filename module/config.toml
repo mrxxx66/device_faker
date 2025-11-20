@@ -6,8 +6,9 @@
 # ============================================================
 
 # 全局默认模式（推荐使用 lite 以增强隐蔽性）
-# - "lite": 轻量模式，只修改 Build 类，完成后卸载模块（不易被检测）⭐ 推荐
+# - "lite": 轻量模式，只修改 Build 类，完成后卸载内存（不易被检测）⭐ 推荐
 # - "full": 完整模式，伪装 Build + SystemProperties（功能完整，但可能被检测）
+# - "resetprop": 使用 resetprop 工具修改属性（持续伪装）
 default_mode = "lite"
 
 # 调试模式（默认关闭以提高隐蔽性）
@@ -96,6 +97,17 @@ fingerprint = "google/marlin/marlin:10/QP1A.191005.007.A3/5972272:user/release-k
 
 # 方式二：直接配置
 # 不使用模板，直接指定设备信息
+
+# QQ 平板模式配置
+# 使用 resetprop 修改 ro.build.characteristics 为 tablet
+# 机型伪装为 Xiaomi Pad 6 Pro (23046RP50C)
+[[apps]]
+package = "com.tencent.mobileqq"
+mode = "resetprop"
+characteristics = "tablet"
+manufacturer = "Xiaomi"
+brand = "Xiaomi"
+model = "23046RP50C"
 
 [[apps]]
 package = "com.omarea.vtools"
@@ -234,6 +246,7 @@ manufacturer = "vivo"
 # ├──────────┼────────────┼──────────────┼────────────┼──────────────┤
 # │  lite ⭐ │     ✅     │      ❌      │     ✅     │  ⭐⭐⭐⭐⭐  │
 # │  full    │     ✅     │      ✅      │     ❌     │  ⭐⭐⭐      │
+# │ resetprop│     ✅     │      ✅      │     ❌     │  ⭐⭐        │
 # └──────────┴────────────┴──────────────┴────────────┴──────────────┘
 # 
 # 【lite 模式】（默认，推荐）⭐
@@ -251,6 +264,11 @@ manufacturer = "vivo"
 # - ⚠️ 缺点：模块驻留内存，可能被某些应用检测到
 # - ⚠️ 注意：仅在 lite 模式不够用时才使用
 # - 适用场景：需要完全伪装 SystemProperties 的特殊应用
+#
+# 【resetprop 模式】
+# - 使用 resetprop 工具修改系统属性
+# - ✅ 优点：可以修改只读属性（如 ro.build.characteristics）
+# - 适用场景：QQ 平板模式伪装（需修改 characteristics）
 # 
 # 推荐策略：
 # 1. 默认所有应用使用 lite 模式（不设置 mode 字段）

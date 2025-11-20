@@ -27,6 +27,10 @@ default_mode = "lite"  # Recommended: lightweight mode (better stealth)
   - May be detected
   - Only use when lite mode is insufficient
 
+- `"resetprop"` - Resetprop mode
+  - Uses resetprop tool to modify properties
+  - Supports modifying read-only properties (such as `ro.build.characteristics`)
+
 ### debug (Debug Mode)
 
 ```toml
@@ -145,6 +149,7 @@ model = "SM-S9280"
 | `fingerprint` | `Build.FINGERPRINT` | + `ro.build.fingerprint` | Fingerprint |
 | `name` | ❌ | `ro.product.name` + `ro.product.device` | Code name (e.g.: xuanyuan) |
 | `marketname` | ❌ | `ro.product.marketname` | Model name (e.g.: REDMI K90 Pro Max) |
+| `characteristics` | ❌ | `ro.build.characteristics` | Characteristics (e.g.: tablet) - only effective in resetprop mode |
 
 **Notes**:
 - All fields except `package` are optional
@@ -152,18 +157,20 @@ model = "SM-S9280"
 - Fields in [[apps]] will override template configuration
 - `name` and `marketname` are only effective in **full mode** (affect SystemProperties)
 - `name` field in full mode will simultaneously spoof `ro.product.name` and `ro.product.device`
+- `characteristics` field is only effective in **resetprop mode**
 - In **lite mode**, only `manufacturer`, `brand`, `model`, `device`, `product`, `fingerprint` take effect
 
 ## Mode Comparison
 
-| Feature | lite Mode ⭐ | full Mode |
-|---------|-------------|-----------|
-| Build Class Spoofing | ✅ | ✅ |
-| SystemProperties Spoofing | ❌ | ✅ |
-| Module Unloadable | ✅ | ❌ |
-| Stealth | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| Detection Risk | Very Low | Relatively Low |
-| Recommendation | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Feature | lite Mode ⭐ | full Mode | resetprop Mode |
+|---------|-------------|-----------|----------------|
+| Build Class Spoofing | ✅ | ✅ | ✅ |
+| SystemProperties Spoofing | ❌ | ✅ | ✅ |
+| Read-only Property Modification | ❌ | ❌ | ✅ |
+| Module Unloadable | ✅ | ❌ | ❌ |
+| Stealth | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| Detection Risk | Very Low | Relatively Low | Relatively Low |
+| Recommendation | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
 
 ## How to Choose a Mode?
 
@@ -184,3 +191,6 @@ model = "SM-S9280"
 - Application reads SystemProperties
 - Can still detect real device model in lite mode
 - Don't mind being detected by the module
+
+**Use resetprop mode**:
+- Need to modify `ro.build.characteristics` (such as QQ tablet mode)

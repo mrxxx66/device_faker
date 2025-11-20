@@ -145,6 +145,26 @@ impl ZygiskModule for MyModule {
                         info!("SystemProperties hooked successfully, module will stay loaded");
                     }
                 }
+                "resetprop" => {
+                    // Resetprop 模式：使用 companion 进程执行 resetprop
+                    if config.debug {
+                        info!("Resetprop mode: using companion process");
+                    }
+
+                    // 构建属性映射表
+                    let prop_map = Config::build_merged_property_map(&merged_config);
+
+                    // 通过 companion 执行 resetprop
+                    Self::spoof_system_props_via_companion(&mut api, &prop_map)?;
+
+                    if config.debug {
+                        info!("Resetprop spoofing completed");
+                    }
+
+                    // 完成后卸载模块（不需要保持 Hook）
+                    *IS_FULL_MODE.lock().unwrap() = false;
+                    api.set_option(ZygiskOption::DlCloseModuleLibrary);
+                }
                 _ => {
                     // 未知模式,回退到默认的 lite 模式
                     error!(
@@ -295,11 +315,42 @@ impl MyModule {
 
         Ok(())
     }
+
+    fn spoof_system_props_via_companion(
+        api: &mut ZygiskApi<V4>,
+        prop_map: &HashMap<String, String>,
+    ) -> anyhow::Result<()> {
+        use std::io::{Read, Write};
+
+        for (key, value) in prop_map {
+            let command = format!("{} {}", key, value);
+
+            let _ = api.with_companion(|stream| {
+                if let Err(e) = stream.write_all(command.as_bytes()) {
+                    error!("Failed to write to companion: {}", e);
+                    return;
+                }
+
+                let mut result_buf = [0u8; 4];
+                if let Err(e) = stream.read_exact(&mut result_buf) {
+                    error!("Failed to read from companion: {}", e);
+                    return;
+                }
+
+                let result = i32::from_le_bytes(result_buf);
+                if result != 0 {
+                    error!("Failed to set prop {} to {}", key, value);
+                }
+            });
+        }
+
+        Ok(())
+    }
 }
 
 zygisk_api::register_module!(MyModule);
 
-/// SystemProperties.native_get Hook 函数
+// SystemProperties.native_get Hook 函数
 unsafe extern "C" fn native_get_hook(
     env: *mut jni::sys::JNIEnv,
     class: jni::sys::jclass,
@@ -349,3 +400,58 @@ unsafe extern "C" fn native_get_hook(
     // 如果原始函数不可用（不应该发生），返回默认值
     def
 }
+
+// Companion entry point
+fn handle_companion_request(stream: &mut std::os::unix::net::UnixStream) {
+    use std::io::{Read, Write};
+    use std::process::Command;
+
+    let mut buffer = [0; 2048];
+    match stream.read(&mut buffer) {
+        Ok(bytes) if bytes > 0 => {
+            let command = String::from_utf8_lossy(&buffer[..bytes]);
+            let resetprop_path = find_resetprop_path();
+
+            if let Some(path) = resetprop_path {
+                let output = Command::new(path).args(command.split_whitespace()).output();
+
+                let result: i32 = match output {
+                    Ok(out) if out.status.success() => 0,
+                    _ => -1,
+                };
+                let _ = stream.write_all(&result.to_le_bytes());
+            } else {
+                let _ = stream.write_all(&(-1i32).to_le_bytes());
+            }
+        }
+        _ => {}
+    }
+}
+
+fn find_resetprop_path() -> Option<String> {
+    let possible_paths = [
+        "/data/adb/ksu/bin/resetprop",
+        "/data/adb/magisk/resetprop",
+        "/debug_ramdisk/resetprop",
+        "/data/adb/ap/bin/resetprop",
+        "/system/bin/resetprop",
+        "/vendor/bin/resetprop",
+    ];
+
+    for path in possible_paths {
+        if std::path::Path::new(path).exists() {
+            return Some(path.to_string());
+        }
+    }
+
+    // Try `which resetprop`
+    std::process::Command::new("which")
+        .arg("resetprop")
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .filter(|path| !path.is_empty() && std::path::Path::new(path).exists())
+}
+
+zygisk_api::register_companion!(handle_companion_request);
