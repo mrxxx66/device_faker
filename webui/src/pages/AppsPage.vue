@@ -107,16 +107,26 @@
       </div>
 
       <div v-if="configMode === 'template'" class="template-selector">
+        <el-input
+          v-model="templateSearch"
+          :placeholder="t('apps.dialog.search_template_placeholder')"
+          prefix-icon="Search"
+          clearable
+          class="template-search"
+        />
         <el-select
           v-model="selectedTemplate"
           :placeholder="t('apps.dialog.select_template_placeholder')"
+          :no-data-text="templateNoDataText"
+          :no-match-text="templateNoMatchText"
+          filterable
           style="width: 100%"
         >
           <el-option
-            v-for="(template, name) in templates"
-            :key="name"
-            :label="`${name} - ${template.brand} ${template.model}`"
-            :value="name"
+            v-for="option in filteredTemplateOptions"
+            :key="option.name"
+            :label="option.label"
+            :value="option.name"
           />
         </el-select>
       </div>
@@ -218,6 +228,53 @@ const filterType = ref<'all' | 'configured' | 'unconfigured'>('all')
 const loading = computed(() => appsStore.loading)
 const installedApps = computed(() => appsStore.installedApps)
 const templates = computed(() => configStore.getTemplates())
+const templateSearch = ref('')
+
+interface TemplateOption {
+  name: string
+  label: string
+  searchable: string
+}
+
+const templateOptions = computed<TemplateOption[]>(() => {
+  const allTemplates = templates.value || {}
+
+  return Object.entries(allTemplates).map(([name, template]) => {
+    const label = `${name} - ${template.brand || ''} ${template.model || ''}`
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    const searchable = [
+      name,
+      template.brand,
+      template.model,
+      template.marketname,
+      template.device,
+      template.product,
+    ]
+      .filter(Boolean)
+      .map((part) => String(part).toLowerCase())
+      .join(' ')
+
+    return {
+      name,
+      label: label || name,
+      searchable,
+    }
+  })
+})
+
+const filteredTemplateOptions = computed(() => {
+  const keyword = templateSearch.value.trim().toLowerCase()
+  if (!keyword) return templateOptions.value
+
+  return templateOptions.value.filter((option) => option.searchable.includes(keyword))
+})
+
+const templateNoDataText = computed(() =>
+  templateSearch.value.trim() ? t('apps.dialog.search_no_result') : t('apps.dialog.no_templates')
+)
+const templateNoMatchText = computed(() => t('apps.dialog.search_no_result'))
 const appIcons = ref<Record<string, string>>({})
 const iconLoaded = ref<Record<string, boolean>>({})
 const iconObserver = ref<IntersectionObserver | null>(null)
@@ -289,6 +346,7 @@ function getAppConfig(packageName: string) {
 
 function configureApp(app: InstalledApp) {
   currentApp.value = app
+  templateSearch.value = ''
   const existingConfig = getAppConfig(app.packageName)
 
   if (existingConfig) {
@@ -745,6 +803,10 @@ onUnmounted(() => {
 .template-selector,
 .custom-config {
   margin-top: 1rem;
+}
+
+.template-search {
+  margin-bottom: 0.75rem;
 }
 
 .remove-hint {
