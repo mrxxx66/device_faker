@@ -116,7 +116,9 @@ const currentPageComponent = computed(() => {
 
 // 应用深色模式到 html 元素（Element Plus 需要）
 watchEffect(() => {
-  if (isDark.value) {
+  const isDarkMode = isDark.value
+
+  if (isDarkMode) {
     document.documentElement.classList.add('dark')
     // 深色模式：匹配深色毛玻璃效果
     document.getElementById('theme-color')?.setAttribute('content', '#1a2538')
@@ -125,6 +127,40 @@ watchEffect(() => {
     // 浅色模式：匹配浅色毛玻璃效果
     document.getElementById('theme-color')?.setAttribute('content', '#f2f9ff')
   }
+
+  // 强制重新计算样式，确保毛玻璃效果正确应用
+  // 通过强制重绘来解决样式同步问题
+  requestAnimationFrame(() => {
+    // 强制触发重新渲染
+    const appContainer = document.querySelector('.app-container') as HTMLElement
+    if (appContainer) {
+      // 强制重排
+      appContainer.style.display = 'none'
+      void appContainer.offsetHeight // 触发重排
+      appContainer.style.display = ''
+    }
+
+    // 强制所有毛玻璃元素重新计算样式
+    const glassElements = document.querySelectorAll('.glass-effect')
+    glassElements.forEach((element) => {
+      const el = element as HTMLElement
+      // 使用强制重绘技巧
+      el.style.willChange = 'transform, opacity, backdrop-filter'
+      el.style.transform = 'translateZ(0) scale(1.001)'
+      setTimeout(() => {
+        el.style.transform = 'translateZ(0)'
+        setTimeout(() => {
+          el.style.willChange = ''
+          el.style.transform = ''
+        }, 50)
+      }, 0)
+    })
+
+    // 触发所有样式重新计算
+    document.body.style.webkitFilter = 'hide'
+    void document.body.offsetHeight
+    document.body.style.webkitFilter = ''
+  })
 })
 
 // 计算滚动条宽度
