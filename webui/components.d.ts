@@ -11,6 +11,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AppConfigDialog: typeof import('./src/components/apps/AppConfigDialog.vue')['default']
+    AppFilters: typeof import('./src/components/apps/AppFilters.vue')['default']
+    AppList: typeof import('./src/components/apps/AppList.vue')['default']
     ElAutocomplete: typeof import('element-plus/es')['ElAutocomplete']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElDialog: typeof import('element-plus/es')['ElDialog']
@@ -24,6 +27,10 @@ declare module 'vue' {
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSwitch: typeof import('element-plus/es')['ElSwitch']
     OnlineTemplateDialog: typeof import('./src/components/OnlineTemplateDialog.vue')['default']
+    TemplateCard: typeof import('./src/components/templates/TemplateCard.vue')['default']
+    TemplateDialog: typeof import('./src/components/templates/TemplateDialog.vue')['default']
+    TemplateHeader: typeof import('./src/components/templates/TemplateHeader.vue')['default']
+    TemplateList: typeof import('./src/components/templates/TemplateList.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']
