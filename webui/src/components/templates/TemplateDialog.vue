@@ -127,10 +127,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import { useConfigStore } from '../../stores/config'
 import { useAppsStore } from '../../stores/apps'
 import { useI18n } from '../../utils/i18n'
+import { useLazyMessage } from '../../utils/elementPlus'
 import type { Template } from '../../types'
 
 const props = defineProps<{
@@ -146,6 +146,7 @@ const emit = defineEmits<{ 'update:modelValue': [boolean]; saved: [string] }>()
 const { t } = useI18n()
 const configStore = useConfigStore()
 const appsStore = useAppsStore()
+const getMessage = useLazyMessage()
 
 const installedApps = computed(() => appsStore.installedApps)
 const visible = computed({
@@ -226,12 +227,13 @@ function searchPackages(
   cb(suggestions)
 }
 
-function addPackage() {
+async function addPackage() {
   const pkgName = packageInput.value.trim()
   if (!pkgName) return
 
   if (formData.value.packages.includes(pkgName)) {
-    ElMessage.warning(t('templates.messages.pkg_exists'))
+    const message = await getMessage()
+    message.warning(t('templates.messages.pkg_exists'))
     return
   }
 
@@ -249,8 +251,9 @@ function getAppName(packageName: string): string {
 }
 
 async function saveTemplate() {
+  const message = await getMessage()
   if (!formData.value.name) {
-    ElMessage.error(t('templates.messages.name_required'))
+    message.error(t('templates.messages.name_required'))
     return
   }
 
@@ -283,11 +286,11 @@ async function saveTemplate() {
 
   try {
     await configStore.saveConfig()
-    ElMessage.success(t('templates.messages.saved'))
+    message.success(t('templates.messages.saved'))
     emit('saved', formData.value.name)
     visible.value = false
   } catch {
-    ElMessage.error(t('common.failed'))
+    message.error(t('common.failed'))
   }
 }
 

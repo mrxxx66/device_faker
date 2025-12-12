@@ -102,7 +102,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, CircleClose } from '@element-plus/icons-vue'
 import { toast } from 'kernelsu-alt'
 import {
@@ -114,6 +113,7 @@ import {
 } from '../utils/onlineTemplates'
 import { useConfigStore } from '../stores/config'
 import { useI18n } from '../utils/i18n'
+import { useLazyMessage, useLazyMessageBox } from '../utils/elementPlus'
 
 const props = defineProps<{
   modelValue: boolean
@@ -125,6 +125,8 @@ const emit = defineEmits<{
 
 const configStore = useConfigStore()
 const { t } = useI18n()
+const getMessage = useLazyMessage()
+const getMessageBox = useLazyMessageBox()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -201,8 +203,10 @@ async function loadTemplates() {
 
 // 导入模板
 async function importTemplate(onlineTemplate: OnlineTemplate) {
+  const message = await getMessage()
+
   if (!onlineTemplate.template) {
-    ElMessage.error(t('templates.online.errors.empty_content'))
+    message.error(t('templates.online.errors.empty_content'))
     return
   }
 
@@ -215,7 +219,8 @@ async function importTemplate(onlineTemplate: OnlineTemplate) {
     // 检查是否已存在
     const existingTemplates = configStore.getTemplates()
     if (existingTemplates[templateName]) {
-      await ElMessageBox.confirm(
+      const messageBox = await getMessageBox()
+      await messageBox.confirm(
         t('templates.online.messages.exists_confirm', { name: templateName }),
         t('templates.online.messages.exists_title'),
         {
@@ -230,10 +235,10 @@ async function importTemplate(onlineTemplate: OnlineTemplate) {
     configStore.setTemplate(templateName, onlineTemplate.template)
     await configStore.saveConfig()
 
-    ElMessage.success(t('templates.online.messages.import_success', { name: templateName }))
+    message.success(t('templates.online.messages.import_success', { name: templateName }))
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error(t('templates.online.errors.import_failed'))
+      message.error(t('templates.online.errors.import_failed'))
     }
   } finally {
     importingTemplates.value.delete(onlineTemplate.path)

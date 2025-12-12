@@ -123,9 +123,9 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
 import { useConfigStore } from '../../stores/config'
 import { useI18n } from '../../utils/i18n'
+import { useLazyMessage } from '../../utils/elementPlus'
 import type { InstalledApp, AppConfig } from '../../types'
 
 interface TemplateOption {
@@ -143,6 +143,7 @@ const emit = defineEmits<{ 'update:modelValue': [boolean]; saved: [] }>()
 
 const configStore = useConfigStore()
 const { t } = useI18n()
+const getMessage = useLazyMessage()
 
 const templates = computed(() => configStore.getTemplates())
 const visible = computed({
@@ -257,6 +258,8 @@ function syncFromExistingConfig() {
 async function saveAppConfig() {
   if (!props.app) return
 
+  const message = await getMessage()
+
   if (configMode.value === 'remove') {
     configStore.deleteApp(props.app.packageName)
     const templateMap = configStore.getTemplates()
@@ -268,7 +271,7 @@ async function saveAppConfig() {
     }
   } else if (configMode.value === 'template') {
     if (!selectedTemplate.value) {
-      ElMessage.error(t('apps.messages.select_template'))
+      message.error(t('apps.messages.select_template'))
       return
     }
     const template = templates.value[selectedTemplate.value]
@@ -297,11 +300,11 @@ async function saveAppConfig() {
 
   try {
     await configStore.saveConfig()
-    ElMessage.success(t('apps.messages.saved'))
+    message.success(t('apps.messages.saved'))
     visible.value = false
     emit('saved')
   } catch {
-    ElMessage.error(t('common.failed'))
+    message.error(t('common.failed'))
   }
 }
 

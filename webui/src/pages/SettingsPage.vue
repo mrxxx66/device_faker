@@ -160,17 +160,18 @@
 <script setup lang="ts">
 import { ref, watch, onActivated } from 'vue'
 import { Moon, Globe, Settings, Bug, FileUp } from 'lucide-vue-next'
-import { ElMessage } from 'element-plus'
 import { useConfigStore } from '../stores/config'
 import { useSettingsStore } from '../stores/settings'
 import { writeFile, execCommand, readFile } from '../utils/ksu'
 import { parse as parseToml } from 'smol-toml'
 import { useI18n } from '../utils/i18n'
+import { useLazyMessage } from '../utils/elementPlus'
 import type { Template } from '../types'
 
 const configStore = useConfigStore()
 const settingsStore = useSettingsStore()
 const { t } = useI18n()
+const getMessage = useLazyMessage()
 
 const currentTheme = ref(settingsStore.theme)
 const currentLanguage = ref(settingsStore.language)
@@ -195,23 +196,25 @@ function onLanguageChange(value: string) {
 
 async function onModeChange(value: string) {
   configStore.config.default_mode = value as 'lite' | 'full'
+  const message = await getMessage()
   try {
     await configStore.saveConfig()
-    ElMessage.success(t('settings.messages.default_mode_updated'))
+    message.success(t('settings.messages.default_mode_updated'))
   } catch {
-    ElMessage.error(t('settings.messages.save_failed'))
+    message.error(t('settings.messages.save_failed'))
   }
 }
 
 async function onDebugChange(value: boolean) {
   configStore.config.debug = value
+  const message = await getMessage()
   try {
     await configStore.saveConfig()
-    ElMessage.success(
+    message.success(
       value ? t('settings.messages.debug_enabled') : t('settings.messages.debug_disabled')
     )
   } catch {
-    ElMessage.error(t('settings.messages.save_failed'))
+    message.error(t('settings.messages.save_failed'))
   }
 }
 
@@ -220,8 +223,9 @@ function showInputDialog() {
 }
 
 async function startConversion() {
+  const message = await getMessage()
   if (!convertPath.value) {
-    ElMessage.warning(t('settings.messages.input_path'))
+    message.warning(t('settings.messages.input_path'))
     return
   }
 
@@ -229,7 +233,7 @@ async function startConversion() {
   try {
     const content = await readFile(convertPath.value)
     if (!content) {
-      ElMessage.error(t('settings.messages.read_failed'))
+      message.error(t('settings.messages.read_failed'))
       return
     }
 
@@ -320,7 +324,7 @@ async function startConversion() {
     // Cleanup
     await execCommand(`rm ${tempInputPath} ${tempOutputPath}`)
   } catch (err) {
-    ElMessage.error(
+    message.error(
       `${t('settings.messages.convert_failed')}: ${err instanceof Error ? err.message : String(err)}`
     )
     console.error(err)
@@ -330,8 +334,9 @@ async function startConversion() {
 }
 
 async function saveConvertedTemplate() {
+  const message = await getMessage()
   if (!convertedTemplateName.value) {
-    ElMessage.warning(t('settings.dialog.result.template_name_placeholder'))
+    message.warning(t('settings.dialog.result.template_name_placeholder'))
     return
   }
   if (!convertedTemplate.value) return
@@ -339,10 +344,10 @@ async function saveConvertedTemplate() {
   try {
     configStore.setTemplate(convertedTemplateName.value, convertedTemplate.value)
     await configStore.saveConfig()
-    ElMessage.success(t('settings.messages.template_saved'))
+    message.success(t('settings.messages.template_saved'))
     convertDialogVisible.value = false
   } catch (err) {
-    ElMessage.error(
+    message.error(
       `${t('settings.messages.save_failed')}: ${err instanceof Error ? err.message : String(err)}`
     )
   }

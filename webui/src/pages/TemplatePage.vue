@@ -23,7 +23,6 @@
 
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import TemplateDialog from '../components/templates/TemplateDialog.vue'
 import TemplateHeader from '../components/templates/TemplateHeader.vue'
 import TemplateList from '../components/templates/TemplateList.vue'
@@ -31,11 +30,14 @@ import OnlineTemplateDialog from '../components/OnlineTemplateDialog.vue'
 import { useAppsStore } from '../stores/apps'
 import { useConfigStore } from '../stores/config'
 import { useI18n } from '../utils/i18n'
+import { useLazyMessage, useLazyMessageBox } from '../utils/elementPlus'
 import type { Template } from '../types'
 
 const configStore = useConfigStore()
 const appsStore = useAppsStore()
 const { t, locale } = useI18n()
+const getMessage = useLazyMessage()
+const getMessageBox = useLazyMessageBox()
 
 const templates = computed(() => configStore.getTemplates())
 
@@ -65,7 +67,8 @@ function handleEdit(name: string, template: Template) {
 
 async function deleteTemplateConfirm(name: string) {
   try {
-    await ElMessageBox.confirm(
+    const messageBox = await getMessageBox()
+    await messageBox.confirm(
       t('templates.dialog.delete_confirm', { name }),
       t('templates.dialog.delete_title'),
       {
@@ -80,7 +83,8 @@ async function deleteTemplateConfirm(name: string) {
 
     configStore.deleteTemplate(name)
     await configStore.saveConfig()
-    ElMessage.success(t('templates.messages.deleted'))
+    const message = await getMessage()
+    message.success(t('templates.messages.deleted'))
   } catch {
     // 用户取消
   }
