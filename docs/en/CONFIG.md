@@ -55,6 +55,12 @@ debug = true  # Enable detailed logging (for debugging)
 
 ## Editing Configuration
 
+> Multi-user note: you can append `@userId` after a package name to apply settings only for a specific Android user.
+>
+> - `userId` is the number in `/data/user/<userId>/...` (e.g. `0`, `999`)
+> - Match order: try `com.example.app@userId` first, then fall back to `com.example.app`
+> - Works in both `apps[].package` and templates' `packages` list
+
 ### Method One: Device Templates
 
 Define a `packages` list in the template, automatically apply to all package names:
@@ -64,6 +70,8 @@ Define a `packages` list in the template, automatically apply to all package nam
 [templates.redmagic_9_pro]
 packages = [
     "com.mobilelegends.mi",
+    # Only for userId=999
+    # "com.mobilelegends.mi@999",
     "com.supercell.brawlstars",
     "com.blizzard.diablo.immortal",
 ]

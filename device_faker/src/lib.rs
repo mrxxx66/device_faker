@@ -77,7 +77,9 @@ impl MyModule {
         args: &mut <V4 as ZygiskRaw>::AppSpecializeArgs,
     ) -> anyhow::Result<()> {
         let package_name = Self::extract_package_name(env, args)?;
-        restore_previous_resetprop_if_needed(api, &package_name)?;
+        let user_id = Self::extract_android_user_id(args);
+        let package_with_user = format!("{package_name}@{user_id}");
+        restore_previous_resetprop_if_needed(api, &package_with_user)?;
 
         let config = match load_config() {
             Ok(Some(cfg)) => cfg,
@@ -102,9 +104,13 @@ impl MyModule {
             );
         }
 
-        let Some(merged) = config.get_merged_config(&package_name) else {
+        let merged = config
+            .get_merged_config(&package_with_user)
+            .or_else(|| config.get_merged_config(&package_name));
+
+        let Some(merged) = merged else {
             if config.debug {
-                info!("App {package_name} not in config, unloading module");
+                info!("App {package_name} (user {user_id}) not in config, unloading module");
             }
             api.set_option(ZygiskOption::DlCloseModuleLibrary);
             return Ok(());
@@ -118,7 +124,10 @@ impl MyModule {
         }
 
         if config.debug {
-            info!("Using mode: {} for app: {package_name}", merged.mode);
+            info!(
+                "Using mode: {} for app: {package_name} (user {user_id})",
+                merged.mode
+            );
         }
 
         hook_build_fields(env, &merged)?;
@@ -130,9 +139,20 @@ impl MyModule {
             SpoofMode::Lite => Self::apply_lite_mode(api, config.debug),
             SpoofMode::Full => Self::apply_full_mode(api, env, &merged, config.debug),
             SpoofMode::Resetprop => {
-                Self::apply_resetprop_mode(api, &package_name, &merged, config.debug)
+                Self::apply_resetprop_mode(api, &package_with_user, &merged, config.debug)
             }
         }
+    }
+
+    fn extract_android_user_id(args: &<V4 as ZygiskRaw>::AppSpecializeArgs) -> u32 {
+        // Android 的 app UID = userId * 100000 + appId
+        // 这里的 userId 对应 /data/user/<userId>/... 里的数字
+        const AID_USER_OFFSET: u32 = 100_000;
+        let uid = *args.uid;
+        if uid <= 0 {
+            return 0;
+        }
+        (uid as u32) / AID_USER_OFFSET
     }
 
     fn extract_package_name(

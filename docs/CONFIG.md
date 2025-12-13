@@ -55,6 +55,12 @@ debug = true  # 启用详细日志（用于调试）
 
 ## 编辑配置
 
+> 多用户说明：支持在包名后追加 `@userId` 来只对指定用户生效。
+> 
+> - `userId` 对应路径 `/data/user/<userId>/...` 中的数字（例如 `0`、`999`）
+> - 匹配优先级：先匹配 `com.example.app@userId`，找不到再回退匹配 `com.example.app`
+> - 该写法同时适用于 `apps` 里的 `package` 和模板的 `packages` 列表
+
 ### 方式一：机型模板
 
 在模板中定义 `packages` 列表，自动应用到所有包名：
@@ -64,6 +70,8 @@ debug = true  # 启用详细日志（用于调试）
 [templates.redmagic_9_pro]
 packages = [
     "com.mobilelegends.mi",
+  # 仅对 userId=999 生效
+  # "com.mobilelegends.mi@999",
     "com.supercell.brawlstars",
     "com.blizzard.diablo.immortal",
 ]
