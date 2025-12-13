@@ -54,7 +54,36 @@
         <el-select v-model="defaultMode" class="setting-control" @change="onModeChange">
           <el-option :label="t('settings.module.default_mode.lite')" value="lite" />
           <el-option :label="t('settings.module.default_mode.full')" value="full" />
+          <el-option :label="t('settings.module.default_mode.resetprop')" value="resetprop" />
         </el-select>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">
+            <Shield :size="24" />
+          </div>
+          <div class="setting-text">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 0.25rem;
+              "
+            >
+              <h3 class="setting-name" style="margin-bottom: 0; white-space: normal">
+                {{ t('settings.module.force_denylist_unmount.label') }}
+              </h3>
+              <el-switch
+                v-model="defaultForceDenylistUnmount"
+                class="setting-control-switch"
+                @change="onForceDenylistUnmountChange"
+              />
+            </div>
+            <p class="setting-desc">{{ t('settings.module.force_denylist_unmount.desc') }}</p>
+          </div>
+        </div>
       </div>
 
       <div class="setting-item setting-item-horizontal">
@@ -159,7 +188,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onActivated } from 'vue'
-import { Moon, Globe, Settings, Bug, FileUp } from 'lucide-vue-next'
+import { Moon, Globe, Settings, Bug, FileUp, Shield } from 'lucide-vue-next'
 import { useConfigStore } from '../stores/config'
 import { useSettingsStore } from '../stores/settings'
 import { writeFile, execCommand, readFile } from '../utils/ksu'
@@ -176,6 +205,7 @@ const getMessage = useLazyMessage()
 const currentTheme = ref(settingsStore.theme)
 const currentLanguage = ref(settingsStore.language)
 const defaultMode = ref(configStore.config.default_mode || 'lite')
+const defaultForceDenylistUnmount = ref(configStore.config.default_force_denylist_unmount || false)
 const debugMode = ref(configStore.config.debug || false)
 
 const convertPath = ref('/data/adb/device_faker/config/system.prop')
@@ -195,11 +225,22 @@ function onLanguageChange(value: string) {
 }
 
 async function onModeChange(value: string) {
-  configStore.config.default_mode = value as 'lite' | 'full'
+  configStore.config.default_mode = value as 'lite' | 'full' | 'resetprop'
   const message = await getMessage()
   try {
     await configStore.saveConfig()
     message.success(t('settings.messages.default_mode_updated'))
+  } catch {
+    message.error(t('settings.messages.save_failed'))
+  }
+}
+
+async function onForceDenylistUnmountChange(value: boolean) {
+  configStore.config.default_force_denylist_unmount = value
+  const message = await getMessage()
+  try {
+    await configStore.saveConfig()
+    message.success(t('common.saved'))
   } catch {
     message.error(t('settings.messages.save_failed'))
   }
@@ -356,9 +397,19 @@ async function saveConvertedTemplate() {
 // 监听配置变化（只创建一次监听器）
 watch(
   () => configStore.config.default_mode,
-  (newMode: 'lite' | 'full' | undefined) => {
+  (newMode: 'lite' | 'full' | 'resetprop' | undefined) => {
     if (newMode && defaultMode.value !== newMode) {
       defaultMode.value = newMode
+    }
+  }
+)
+
+watch(
+  () => configStore.config.default_force_denylist_unmount,
+  (newValue: boolean | undefined) => {
+    const val = newValue || false
+    if (defaultForceDenylistUnmount.value !== val) {
+      defaultForceDenylistUnmount.value = val
     }
   }
 )
@@ -378,6 +429,7 @@ onActivated(() => {
   currentTheme.value = settingsStore.theme
   currentLanguage.value = settingsStore.language
   defaultMode.value = configStore.config.default_mode || 'lite'
+  defaultForceDenylistUnmount.value = configStore.config.default_force_denylist_unmount || false
   debugMode.value = configStore.config.debug || false
 })
 </script>

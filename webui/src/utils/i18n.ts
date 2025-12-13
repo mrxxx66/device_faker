@@ -13,6 +13,10 @@ export const messages = {
       loading: '加载中...',
       success: '成功',
       failed: '失败',
+      default: '默认',
+      enabled: '启用',
+      disabled: '禁用',
+      saved: '已保存',
     },
     nav: {
       status: '状态',
@@ -50,6 +54,8 @@ export const messages = {
         name_field: 'Name (可选，仅 full 模式)',
         market_name: 'Market Name (可选，仅 full 模式)',
         fingerprint: 'Fingerprint',
+        characteristics: 'Characteristics (可选，仅 resetprop 模式)',
+        force_denylist_unmount: '强制卸载挂载点',
         mode: '工作模式 (可选)',
         packages: '应用包名列表 (可选)',
       },
@@ -64,12 +70,14 @@ export const messages = {
         market_name: '例如：REDMAGIC 9 Pro',
         fingerprint:
           '例如：nubia/NX769J/NX769J:14/UKQ1.230917.001/20240813.173312:user/release-keys',
+        characteristics: '例如：tablet',
         mode: '留空使用全局默认模式',
         packages: '输入或搜索应用包名',
       },
       options: {
         mode_lite: 'lite - 轻量模式（推荐，隐蔽性好）',
         mode_full: 'full - 完整模式（全面伪装，可能被检测）',
+        mode_resetprop: 'resetprop - Resetprop 模式 (支持只读属性)',
       },
       empty: {
         title: '暂无机型模板',
@@ -96,6 +104,7 @@ export const messages = {
       values: {
         lite: 'lite (轻量)',
         full: 'full (完整)',
+        resetprop: 'resetprop (Resetprop)',
       },
       categories: {
         common: '通用设备',
@@ -197,6 +206,11 @@ export const messages = {
           desc: '选择模块的默认工作模式',
           lite: '轻量模式 (推荐)',
           full: '完整模式',
+          resetprop: 'Resetprop 模式',
+        },
+        force_denylist_unmount: {
+          label: '默认强制卸载挂载点',
+          desc: '为目标应用启用 Zygisk 的 FORCE_DENYLIST_UNMOUNT',
         },
         debug: {
           label: '调试模式',
@@ -235,6 +249,7 @@ export const messages = {
         read_failed: '读取文件失败或文件为空',
         convert_failed: '转换失败',
         save_failed: '保存失败',
+        save_success: '保存成功',
         template_saved: '模板已保存',
       },
     },
@@ -250,6 +265,10 @@ export const messages = {
       loading: 'Loading...',
       success: 'Success',
       failed: 'Failed',
+      default: 'Default',
+      enabled: 'Enabled',
+      disabled: 'Disabled',
+      saved: 'Saved',
     },
     nav: {
       status: 'Status',
@@ -287,6 +306,8 @@ export const messages = {
         name_field: 'Name (Optional, full mode only)',
         market_name: 'Market Name (Optional, full mode only)',
         fingerprint: 'Fingerprint',
+        characteristics: 'Characteristics (Optional, resetprop mode only)',
+        force_denylist_unmount: 'Force Denylist Unmount',
         mode: 'Work Mode (Optional)',
         packages: 'Packages (Optional)',
       },
@@ -301,12 +322,14 @@ export const messages = {
         market_name: 'e.g. REDMAGIC 9 Pro',
         fingerprint:
           'e.g. nubia/NX769J/NX769J:14/UKQ1.230917.001/20240813.173312:user/release-keys',
+        characteristics: 'e.g. tablet',
         mode: 'Leave empty to use global default',
         packages: 'Enter or search package name',
       },
       options: {
         mode_lite: 'lite - Lite Mode\n(Recommended, Stealthy)',
         mode_full: 'full - Full Mode\n(Complete Spoofing, Detectable)',
+        mode_resetprop: 'resetprop - Resetprop Mode (Supports read-only props)',
       },
       empty: {
         title: 'No Templates Found',
@@ -333,6 +356,7 @@ export const messages = {
       values: {
         lite: 'lite (Lite)',
         full: 'full (Full)',
+        resetprop: 'resetprop (Resetprop)',
       },
       categories: {
         common: 'Common',
@@ -434,6 +458,11 @@ export const messages = {
           desc: 'Choose default work mode for module',
           lite: 'Lite Mode (Recommended)',
           full: 'Full Mode',
+          resetprop: 'Resetprop Mode',
+        },
+        force_denylist_unmount: {
+          label: 'Default Force Denylist Unmount',
+          desc: 'Enable Zygisk FORCE_DENYLIST_UNMOUNT for target apps',
         },
         debug: {
           label: 'Debug Mode',
@@ -472,6 +501,7 @@ export const messages = {
         read_failed: 'Failed to read file or file is empty',
         convert_failed: 'Conversion failed',
         save_failed: 'Save failed',
+        save_success: 'Saved successfully',
         template_saved: 'Template saved',
       },
     },

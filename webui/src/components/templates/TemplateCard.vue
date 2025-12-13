@@ -31,7 +31,23 @@
       <div v-if="template.mode" class="detail-item">
         <span class="detail-label">{{ t('templates.labels.mode') }}:</span>
         <span class="detail-value">
-          {{ template.mode === 'lite' ? t('templates.values.lite') : t('templates.values.full') }}
+          {{
+            template.mode === 'lite'
+              ? t('templates.values.lite')
+              : template.mode === 'full'
+                ? t('templates.values.full')
+                : t('templates.values.resetprop')
+          }}
+        </span>
+      </div>
+      <div v-if="template.characteristics" class="detail-item">
+        <span class="detail-label">{{ t('templates.fields.characteristics') }}:</span>
+        <span class="detail-value">{{ template.characteristics }}</span>
+      </div>
+      <div v-if="template.force_denylist_unmount !== undefined" class="detail-item">
+        <span class="detail-label">{{ t('templates.fields.force_denylist_unmount') }}:</span>
+        <span class="detail-value">
+          {{ template.force_denylist_unmount ? t('common.enabled') : t('common.disabled') }}
         </span>
       </div>
       <div v-if="template.packages && template.packages.length > 0" class="detail-item">

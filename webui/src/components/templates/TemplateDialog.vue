@@ -74,6 +74,28 @@
         >
           <el-option :label="t('templates.options.mode_lite')" value="lite" />
           <el-option :label="t('templates.options.mode_full')" value="full" />
+          <el-option :label="t('templates.options.mode_resetprop')" value="resetprop" />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item
+        v-if="
+          formData.mode === 'resetprop' ||
+          (!formData.mode && configStore.config.default_mode === 'resetprop')
+        "
+        :label="t('templates.fields.characteristics')"
+      >
+        <el-input
+          v-model="formData.characteristics"
+          :placeholder="t('templates.placeholders.characteristics')"
+        />
+      </el-form-item>
+
+      <el-form-item :label="t('templates.fields.force_denylist_unmount')">
+        <el-select v-model="formData.force_denylist_unmount" :placeholder="t('common.default')">
+          <el-option :label="t('common.default')" :value="undefined" />
+          <el-option :label="t('common.enabled')" :value="true" />
+          <el-option :label="t('common.disabled')" :value="false" />
         </el-select>
       </el-form-item>
 
@@ -165,6 +187,8 @@ const formData = ref({
   name_field: '',
   marketname: '',
   fingerprint: '',
+  characteristics: '',
+  force_denylist_unmount: undefined as boolean | undefined,
   mode: '',
   packages: [] as string[],
 })
@@ -181,6 +205,8 @@ function resetForm() {
     name_field: '',
     marketname: '',
     fingerprint: '',
+    characteristics: '',
+    force_denylist_unmount: undefined,
     mode: '',
     packages: [],
   }
@@ -203,6 +229,8 @@ function fillFormFromTemplate() {
     name_field: props.templateData.name || '',
     marketname: props.templateData.marketname || '',
     fingerprint: props.templateData.fingerprint || '',
+    characteristics: props.templateData.characteristics || '',
+    force_denylist_unmount: props.templateData.force_denylist_unmount,
     mode: props.templateData.mode || '',
     packages: props.templateData.packages || [],
   }
@@ -274,8 +302,16 @@ async function saveTemplate() {
     template.marketname = formData.value.marketname
   }
 
+  if (formData.value.characteristics) {
+    template.characteristics = formData.value.characteristics
+  }
+
+  if (formData.value.force_denylist_unmount !== undefined) {
+    template.force_denylist_unmount = formData.value.force_denylist_unmount
+  }
+
   if (formData.value.mode) {
-    template.mode = formData.value.mode as 'lite' | 'full'
+    template.mode = formData.value.mode as 'lite' | 'full' | 'resetprop'
   }
 
   if (formData.value.packages.length > 0) {

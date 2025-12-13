@@ -105,6 +105,32 @@
           >
             <el-option :label="t('templates.options.mode_lite')" value="lite" />
             <el-option :label="t('templates.options.mode_full')" value="full" />
+            <el-option :label="t('templates.options.mode_resetprop')" value="resetprop" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item
+          v-if="
+            customFormData.mode === 'resetprop' ||
+            (!customFormData.mode && configStore.config.default_mode === 'resetprop')
+          "
+          :label="t('templates.fields.characteristics')"
+        >
+          <el-input
+            v-model="customFormData.characteristics"
+            :placeholder="t('templates.placeholders.characteristics')"
+          />
+        </el-form-item>
+
+        <el-form-item :label="t('templates.fields.force_denylist_unmount')">
+          <el-select
+            v-model="customFormData.force_denylist_unmount"
+            :placeholder="t('common.default')"
+            style="width: 100%"
+          >
+            <el-option :label="t('common.default')" :value="undefined" />
+            <el-option :label="t('common.enabled')" :value="true" />
+            <el-option :label="t('common.disabled')" :value="false" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -163,7 +189,9 @@ const customFormData = ref({
   name: '',
   marketname: '',
   fingerprint: '',
-  mode: undefined as 'lite' | 'full' | undefined,
+  characteristics: '',
+  force_denylist_unmount: undefined as boolean | undefined,
+  mode: undefined as 'lite' | 'full' | 'resetprop' | undefined,
 })
 
 const dialogTitle = computed(() =>
@@ -235,7 +263,9 @@ function syncFromExistingConfig() {
         name: existingConfig.name || '',
         marketname: existingConfig.marketname || '',
         fingerprint: existingConfig.fingerprint || '',
-        mode: existingConfig.mode as 'lite' | 'full' | undefined,
+        characteristics: existingConfig.characteristics || '',
+        force_denylist_unmount: existingConfig.force_denylist_unmount,
+        mode: existingConfig.mode as 'lite' | 'full' | 'resetprop' | undefined,
       }
     }
   } else {
@@ -250,6 +280,8 @@ function syncFromExistingConfig() {
       name: '',
       marketname: '',
       fingerprint: '',
+      characteristics: '',
+      force_denylist_unmount: undefined,
       mode: undefined,
     }
   }
@@ -274,6 +306,16 @@ async function saveAppConfig() {
       message.error(t('apps.messages.select_template'))
       return
     }
+
+    // Remove from other templates to avoid conflicts
+    const allTemplates = configStore.getTemplates()
+    for (const [name, tmpl] of Object.entries(allTemplates)) {
+      if (name !== selectedTemplate.value && tmpl.packages?.includes(props.app.packageName)) {
+        tmpl.packages = tmpl.packages.filter((p: string) => p !== props.app!.packageName)
+        configStore.setTemplate(name, tmpl)
+      }
+    }
+
     const template = templates.value[selectedTemplate.value]
     if (!template.packages) {
       template.packages = []
@@ -293,6 +335,8 @@ async function saveAppConfig() {
       name: customFormData.value.name,
       marketname: customFormData.value.marketname,
       fingerprint: customFormData.value.fingerprint,
+      characteristics: customFormData.value.characteristics,
+      force_denylist_unmount: customFormData.value.force_denylist_unmount,
       mode: customFormData.value.mode,
     }
     configStore.setApp(appConfig)

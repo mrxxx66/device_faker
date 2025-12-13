@@ -8,23 +8,26 @@ export interface DeviceInfo {
   name?: string
   marketname?: string
   fingerprint?: string
+  characteristics?: string
+  force_denylist_unmount?: boolean
 }
 
 // 机型模板接口
 export interface Template extends DeviceInfo {
   packages?: string[]
-  mode?: 'lite' | 'full'
+  mode?: 'lite' | 'full' | 'resetprop'
 }
 
 // 应用配置接口
 export interface AppConfig extends DeviceInfo {
   package: string
-  mode?: 'lite' | 'full'
+  mode?: 'lite' | 'full' | 'resetprop'
 }
 
 // 配置文件接口
 export interface Config {
-  default_mode?: 'lite' | 'full'
+  default_mode?: 'lite' | 'full' | 'resetprop'
+  default_force_denylist_unmount?: boolean
   debug?: boolean
   templates?: Record<string, Template>
   apps?: AppConfig[]
