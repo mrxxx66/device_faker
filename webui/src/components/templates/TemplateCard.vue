@@ -25,8 +25,8 @@
         <span class="detail-value">{{ template.device }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">{{ t('templates.fields.fingerprint') }}:</span>
-        <span class="detail-value fingerprint">{{ template.fingerprint }}</span>
+        <span class="detail-label">{{ t('templates.fields.model') }}:</span>
+        <span class="detail-value">{{ template.model }}</span>
       </div>
       <div v-if="template.mode" class="detail-item">
         <span class="detail-label">{{ t('templates.labels.mode') }}:</span>
@@ -204,11 +204,6 @@ const { t } = useI18n()
   color: var(--text);
   flex: 1;
   word-break: break-all;
-}
-
-.detail-value.fingerprint {
-  font-family: monospace;
-  font-size: 0.75rem;
 }
 
 .template-meta {
