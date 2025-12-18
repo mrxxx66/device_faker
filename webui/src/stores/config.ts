@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { Config, Template, AppConfig } from '../types'
 import { readFile, writeFile, fileExists, mkdir } from '../utils/ksu'
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml'
+import { normalizePackageName } from '../utils/package'
 
 const CONFIG_PATH = '/data/adb/device_faker/config/config.toml'
 const MODULE_PROP_PATH = '/data/adb/modules/device_faker/module.prop'
@@ -146,30 +147,67 @@ export const useConfigStore = defineStore('config', () => {
 
   // 检查包名是否已配置
   function isPackageConfigured(packageName: string): boolean {
-    // 检查模板中的包名
+    const hasUserSuffix = /@\d+$/.test(packageName)
+
+    // 先尝试精确匹配，保留多用户后缀
     for (const template of Object.values(templates.value)) {
       if (template.packages?.includes(packageName)) {
         return true
       }
     }
 
-    // 检查直接配置的应用
-    return apps.value.some((a) => a.package === packageName)
+    if (apps.value.some((a) => a.package === packageName)) {
+      return true
+    }
+
+    // 仅当调用方带有 userId 后缀时，才做归一化匹配以兼容旧配置
+    if (!hasUserSuffix) {
+      return false
+    }
+
+    const normalized = normalizePackageName(packageName)
+
+    for (const template of Object.values(templates.value)) {
+      if (template.packages?.some((pkg) => normalizePackageName(pkg) === normalized)) {
+        return true
+      }
+    }
+
+    return apps.value.some((a) => normalizePackageName(a.package) === normalized)
   }
 
   // 获取包名的配置
   function getPackageConfig(
     packageName: string
   ): (Template & { source: string }) | AppConfig | null {
-    // 先检查直接配置的应用（优先级更高）
-    const appConfig = apps.value.find((a) => a.package === packageName)
-    if (appConfig) {
-      return appConfig
+    const hasUserSuffix = /@\d+$/.test(packageName)
+
+    // 先精确匹配
+    const exactApp = apps.value.find((a) => a.package === packageName)
+    if (exactApp) {
+      return exactApp
     }
 
-    // 再检查模板中的包名
     for (const [name, template] of Object.entries(templates.value)) {
       if (template.packages?.includes(packageName)) {
+        return { ...template, source: name }
+      }
+    }
+
+    // 仅当调用方带有 userId 后缀时，才做归一化匹配（向后兼容旧配置）
+    if (!hasUserSuffix) {
+      return null
+    }
+
+    const normalized = normalizePackageName(packageName)
+
+    const normalizedApp = apps.value.find((a) => normalizePackageName(a.package) === normalized)
+    if (normalizedApp) {
+      return normalizedApp
+    }
+
+    for (const [name, template] of Object.entries(templates.value)) {
+      if (template.packages?.some((pkg) => normalizePackageName(pkg) === normalized)) {
         return { ...template, source: name }
       }
     }

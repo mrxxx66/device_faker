@@ -1,4 +1,5 @@
 import { exec, listPackages, getPackagesInfo } from 'kernelsu-alt'
+import { normalizePackageName } from './package'
 
 // 执行命令
 export async function execCommand(command: string): Promise<string> {
@@ -81,6 +82,7 @@ export async function getInstalledApps() {
 
     // 批量获取应用信息
     for (const pkg of packageList) {
+      const normalizedPkg = normalizePackageName(pkg)
       try {
         let appName = pkg
         let versionName = ''
@@ -90,7 +92,7 @@ export async function getInstalledApps() {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (typeof (globalThis as any).ksu?.getPackagesInfo !== 'undefined') {
-            const info = await getPackagesInfo(pkg)
+            const info = await getPackagesInfo(normalizedPkg)
             appName = info.appLabel || pkg
             versionName = info.versionName || ''
             versionCode = info.versionCode || 0
@@ -101,7 +103,7 @@ export async function getInstalledApps() {
           // 尝试使用 WebUI-X packageManager API
           if (typeof window.$packageManager !== 'undefined') {
             try {
-              const info = window.$packageManager.getApplicationInfo(pkg, 0, 0)
+              const info = window.$packageManager.getApplicationInfo(normalizedPkg, 0, 0)
               appName = info.getLabel() || pkg
             } catch {
               // 静默失败，使用包名

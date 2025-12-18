@@ -22,6 +22,7 @@ import AppList from '../components/apps/AppList.vue'
 import { useAppsStore } from '../stores/apps'
 import { useConfigStore } from '../stores/config'
 import { useI18n } from '../utils/i18n'
+import { normalizePackageName } from '../utils/package'
 import type { InstalledApp } from '../types'
 
 type FilterType = 'all' | 'configured' | 'unconfigured'
@@ -42,6 +43,8 @@ const configuredApps = computed<InstalledApp[]>(() => {
   const map = new Map<string, InstalledApp>()
 
   for (const appConfig of configStore.getApps()) {
+    if (map.has(appConfig.package)) continue
+
     map.set(appConfig.package, {
       packageName: appConfig.package,
       appName: appConfig.package,
@@ -53,13 +56,13 @@ const configuredApps = computed<InstalledApp[]>(() => {
   for (const template of Object.values(templates)) {
     if (!template.packages) continue
     for (const pkg of template.packages) {
-      if (!map.has(pkg)) {
-        map.set(pkg, {
-          packageName: pkg,
-          appName: pkg,
-          installed: false,
-        })
-      }
+      if (map.has(pkg)) continue
+
+      map.set(pkg, {
+        packageName: pkg,
+        appName: pkg,
+        installed: false,
+      })
     }
   }
 
@@ -67,21 +70,62 @@ const configuredApps = computed<InstalledApp[]>(() => {
 })
 
 const allApps = computed<InstalledApp[]>(() => {
-  const seen = new Set<string>()
-  const merged: InstalledApp[] = []
+  const result: InstalledApp[] = []
+  const packageIndex = new Map<string, number>()
+  const normalizedIndex = new Map<string, number>()
 
+  // 保留已安装应用的原始顺序
   for (const app of installedApps.value) {
-    merged.push({ ...app, installed: app.installed ?? true })
-    seen.add(app.packageName)
-  }
+    const normalized = normalizePackageName(app.packageName)
+    if (packageIndex.has(app.packageName)) continue
 
-  for (const app of configuredApps.value) {
-    if (!seen.has(app.packageName)) {
-      merged.push(app)
+    const entry = {
+      ...app,
+      installed: app.installed ?? true,
+    }
+
+    const idx = result.length
+    result.push(entry)
+    packageIndex.set(app.packageName, idx)
+    if (!normalizedIndex.has(normalized)) {
+      normalizedIndex.set(normalized, idx)
     }
   }
 
-  return merged
+  // 合并配置项：保持已安装顺序，如有同归一化包名则复用其展示信息
+  for (const app of configuredApps.value) {
+    const normalized = normalizePackageName(app.packageName)
+
+    if (packageIndex.has(app.packageName)) continue
+
+    const existingIdx = normalizedIndex.get(normalized)
+
+    if (existingIdx !== undefined) {
+      const merged = {
+        ...result[existingIdx],
+        packageName: app.packageName,
+        installed: true,
+      }
+
+      result[existingIdx] = merged
+      packageIndex.set(app.packageName, existingIdx)
+      continue
+    }
+
+    const entry = {
+      ...app,
+      installed: app.installed ?? false,
+    }
+
+    const idx = result.length
+    result.push(entry)
+    packageIndex.set(app.packageName, idx)
+    if (!normalizedIndex.has(normalized)) {
+      normalizedIndex.set(normalized, idx)
+    }
+  }
+
+  return result
 })
 
 const configuredCount = computed(
@@ -106,7 +150,13 @@ const filteredApps = computed(() => {
     apps = apps.filter((app) => !configStore.isPackageConfigured(app.packageName))
   }
 
-  return apps
+  return apps.slice().sort((a, b) => {
+    const aInstalled = a.installed !== false
+    const bInstalled = b.installed !== false
+
+    if (aInstalled === bInstalled) return 0
+    return aInstalled ? -1 : 1
+  })
 })
 
 const emptyText = computed(() => {

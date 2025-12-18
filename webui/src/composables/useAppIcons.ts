@@ -1,4 +1,5 @@
 import { nextTick, ref } from 'vue'
+import { normalizePackageName } from '../utils/package'
 
 const ICON_CONTAINER_SELECTOR = '.app-icon-container'
 
@@ -42,12 +43,14 @@ export function useAppIcons() {
   const loadAppIcon = async (packageName: string) => {
     if (appIcons.value[packageName]) return
 
+    const normalizedPackage = normalizePackageName(packageName)
+
     try {
       if (typeof window.$packageManager !== 'undefined') {
         const pm = window.$packageManager
 
         try {
-          const stream = pm.getApplicationIcon(packageName, 0, 0)
+          const stream = pm.getApplicationIcon(normalizedPackage, 0, 0)
           if (!stream) {
             appIcons.value[packageName] = 'fallback'
             return
@@ -71,7 +74,7 @@ export function useAppIcons() {
       // Check for KSU API
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (typeof (globalThis as any).ksu?.getPackagesInfo !== 'undefined') {
-        appIcons.value[packageName] = `ksu://icon/${packageName}`
+        appIcons.value[packageName] = `ksu://icon/${normalizedPackage}`
         return
       }
 
