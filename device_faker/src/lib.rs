@@ -34,10 +34,7 @@ impl ZygiskModule for MyModule {
     type Api = V4;
 
     fn on_load(&self, _api: ZygiskApi<V4>, _env: JNIEnv) {
-        // 初始化日志目录和文件日志
-        init_file_logging();
-        
-        // 同时保留 Android 系统日志
+        // 只初始化 Android 系统日志，文件日志在需要时再初始化
         #[cfg(target_os = "android")]
         android_logger::init_once(
             android_logger::Config::default()
@@ -143,6 +140,11 @@ impl MyModule {
         hook_build_fields(env, &merged)?;
         if config.debug {
             info!("Build fields hooked successfully");
+        }
+
+        // 尝试初始化文件日志（在应用专门化时，权限更充分）
+        if config.debug {
+            init_file_logging_if_needed();
         }
 
         match SpoofMode::from_mode_str(&merged.mode) {
@@ -291,31 +293,26 @@ fn configure_log_level(debug_enabled: bool) {
     log::set_max_level(level);
 }
 
-// 初始化文件日志
-fn init_file_logging() {
-    // 创建日志目录
-    if let Err(e) = fs::create_dir_all(LOG_DIR) {
-        #[cfg(target_os = "android")]
-        android_logger::init_once(
-            android_logger::Config::default()
-                .with_max_level(LevelFilter::Error)
-                .with_tag("DeviceFaker"),
-        );
-        error!("Failed to create log directory: {e}");
-        return;
-    }
+// 延迟初始化文件日志（在应用专门化时）
+fn init_file_logging_if_needed() {
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    
+    INIT.call_once(|| {
+        // 创建日志目录
+        if let Err(e) = fs::create_dir_all(LOG_DIR) {
+            error!("Failed to create log directory: {e}");
+            return;
+        }
 
-    // 配置文件日志
-    let log_file_path = format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S"));
-    if let Err(e) = simple_logging::log_to_file(&log_file_path, LevelFilter::Debug) {
-        #[cfg(target_os = "android")]
-        android_logger::init_once(
-            android_logger::Config::default()
-                .with_max_level(LevelFilter::Error)
-                .with_tag("DeviceFaker"),
-        );
-        error!("Failed to initialize file logger: {e}");
-    }
+        // 配置文件日志
+        let log_file_path = format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S"));
+        if let Err(e) = simple_logging::log_to_file(&log_file_path, LevelFilter::Debug) {
+            error!("Failed to initialize file logger: {e}");
+        } else {
+            info!("File logging initialized: {}", log_file_path);
+        }
+    });
 }
 
 zygisk_api::register_module!(MyModule);
