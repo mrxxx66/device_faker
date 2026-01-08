@@ -1,7 +1,7 @@
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Mutex;
-use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use log::{LevelFilter, Metadata, Record, SetLoggerError};
 use chrono::Local;
 use std::path::Path;
 
@@ -33,7 +33,7 @@ impl log::Log for SimpleLogger {
     }
 
     fn flush(&self) {
-        if let Ok(file) = self.file.lock() {
+        if let Ok(mut file) = self.file.lock() {
             let _ = file.flush();
         }
     }

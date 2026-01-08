@@ -7,13 +7,16 @@ authors = ["Seyud"]
 [dependencies]
 anyhow = { version = "1.0.100", default-features = false }
 jni = { version = "0.21", default-features = false }
-log = { version = "^0.4", default-features = false }
+log = { version = "^0.4", default-features = false, features = ["std"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 toml = { version = "0.8", default-features = false, features = ["parse"] }
 zygisk-api = { git = "https://github.com/Seyud/zygisk-api-rs.git" }
 serde_json = "1.0"
 libc = "0.2"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = { version = "^0.15", default-features = false }
 
 [lib]
 name = "zygisk"

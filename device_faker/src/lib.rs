@@ -3,7 +3,7 @@ mod atexit;
 mod companion;
 mod config;
 mod hooks;
-mod simple_logging; // 新增
+mod simple_logging;
 mod state;
 
 use anyhow::Context;
@@ -14,7 +14,7 @@ use companion::{
 use config::{Config, MergedAppConfig};
 use hooks::{hook_build_fields, hook_system_properties};
 use jni::JNIEnv;
-use log::{LevelFilter, error, info, warn};
+use log::{LevelFilter, error, info};
 use state::{FAKE_PROPS, IS_FULL_MODE};
 use std::fs;
 use std::path::Path;
@@ -34,8 +34,16 @@ impl ZygiskModule for MyModule {
     type Api = V4;
 
     fn on_load(&self, _api: ZygiskApi<V4>, _env: JNIEnv) {
-        // 初始化日志目录
+        // 初始化日志目录和文件日志
         init_file_logging();
+        
+        // 同时保留 Android 系统日志
+        #[cfg(target_os = "android")]
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(LevelFilter::Error)
+                .with_tag("DeviceFaker"),
+        );
     }
 
     fn pre_app_specialize(
@@ -287,6 +295,7 @@ fn configure_log_level(debug_enabled: bool) {
 fn init_file_logging() {
     // 创建日志目录
     if let Err(e) = fs::create_dir_all(LOG_DIR) {
+        #[cfg(target_os = "android")]
         android_logger::init_once(
             android_logger::Config::default()
                 .with_max_level(LevelFilter::Error)
@@ -297,10 +306,16 @@ fn init_file_logging() {
     }
 
     // 配置文件日志
-    simple_logging::log_to_file(
-        &format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S")),
-        LevelFilter::Debug, // 更详细的日志级别
-    ).expect("Failed to initialize file logging");
+    let log_file_path = format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S"));
+    if let Err(e) = simple_logging::log_to_file(&log_file_path, LevelFilter::Debug) {
+        #[cfg(target_os = "android")]
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(LevelFilter::Error)
+                .with_tag("DeviceFaker"),
+        );
+        error!("Failed to initialize file logger: {e}");
+    }
 }
 
 zygisk_api::register_module!(MyModule);
