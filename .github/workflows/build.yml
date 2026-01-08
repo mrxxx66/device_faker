@@ -82,3 +82,60 @@ jobs:
         with:
           name: device_faker
           path: module/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download built artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: device_faker
+          path: module/
+
+      - name: Create release directory
+        run: |
+          mkdir -p release
+          zip -r release/device-faker-module-$(date +%Y%m%d_%H%M%S).zip module/
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ## Device Faker Module Release
+            This is an automated release of the Device Faker Zygisk module.
+            
+            ### What's included
+            - Zygisk module for device information spoofing
+            - WebUI for configuration
+            - Companion CLI tool
+            
+            ### Installation
+            1. Flash the zip file in Magisk Manager or KernelSU Manager
+            2. Reboot your device
+            3. Configure through the WebUI or config.toml
+            
+            ### Changelog
+            See the [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for a list of changes since the last release.
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/*.zip
+          asset_name: device-faker-module-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
