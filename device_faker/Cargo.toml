@@ -13,13 +13,11 @@ toml = { version = "0.8", default-features = false, features = ["parse"] }
 zygisk-api = { git = "https://github.com/Seyud/zygisk-api-rs.git" }
 serde_json = "1.0"
 libc = "0.2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [lib]
 name = "zygisk"
 crate-type = ["cdylib"]
-
-[target.'cfg(target_os = "android")'.dependencies]
-android_logger = "^0.15"
 
 [profile.release]
 panic = "abort"
@@ -28,5 +26,3 @@ opt-level = 3
 strip = true
 codegen-units = 1
 overflow-checks = false
-
-

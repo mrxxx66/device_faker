@@ -3,6 +3,7 @@ mod atexit;
 mod companion;
 mod config;
 mod hooks;
+mod simple_logging; // 新增
 mod state;
 
 use anyhow::Context;
@@ -13,16 +14,18 @@ use companion::{
 use config::{Config, MergedAppConfig};
 use hooks::{hook_build_fields, hook_system_properties};
 use jni::JNIEnv;
-use log::{LevelFilter, error, info};
+use log::{LevelFilter, error, info, warn};
 use state::{FAKE_PROPS, IS_FULL_MODE};
 use std::fs;
 use std::path::Path;
+use chrono::Local;
 use zygisk_api::ZygiskModule;
 use zygisk_api::api::v4::ZygiskOption;
 use zygisk_api::api::{V4, ZygiskApi};
 use zygisk_api::raw::ZygiskRaw;
 
 const CONFIG_PATH: &str = "/data/adb/device_faker/config/config.toml";
+const LOG_DIR: &str = "/data/adb/device_faker/logs";
 
 #[derive(Default)]
 struct MyModule;
@@ -31,11 +34,8 @@ impl ZygiskModule for MyModule {
     type Api = V4;
 
     fn on_load(&self, _api: ZygiskApi<V4>, _env: JNIEnv) {
-        android_logger::init_once(
-            android_logger::Config::default()
-                .with_max_level(LevelFilter::Error)
-                .with_tag("DeviceFaker"),
-        );
+        // 初始化日志目录
+        init_file_logging();
     }
 
     fn pre_app_specialize(
@@ -281,6 +281,26 @@ fn configure_log_level(debug_enabled: bool) {
         LevelFilter::Error
     };
     log::set_max_level(level);
+}
+
+// 初始化文件日志
+fn init_file_logging() {
+    // 创建日志目录
+    if let Err(e) = fs::create_dir_all(LOG_DIR) {
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(LevelFilter::Error)
+                .with_tag("DeviceFaker"),
+        );
+        error!("Failed to create log directory: {e}");
+        return;
+    }
+
+    // 配置文件日志
+    simple_logging::log_to_file(
+        &format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S")),
+        LevelFilter::Debug, // 更详细的日志级别
+    ).expect("Failed to initialize file logging");
 }
 
 zygisk_api::register_module!(MyModule);
