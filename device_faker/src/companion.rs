@@ -1,8 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
 use log::{error, warn};
-use std::path::Path;
 
-use crate::config::{Config, MergedAppConfig};
 use crate::state::{FAKE_PROPS, IS_FULL_MODE};
 
 use crate::state::{ACTIVE_RESET_SESSION, ActiveResetSession};
