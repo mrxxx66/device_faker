@@ -74,7 +74,7 @@ const emit = defineEmits<{ select: [InstalledApp] }>()
 
 const { t } = useI18n()
 const configStore = useConfigStore()
-const { appIcons, iconLoaded, onIconLoad, onIconError, setupIconObserver, teardownIconObserver } =
+const { appIcons, iconLoaded, onIconLoad, onIconError, setupIconObserver, teardownIconObserver, preloadVisibleIcons } =
   useAppIcons()
 
 const isConfigured = (packageName: string) => configStore.isPackageConfigured(packageName)
@@ -82,15 +82,27 @@ const isInstalled = (app: InstalledApp) => app.installed !== false
 
 const loading = computed(() => props.loading)
 
+// 监听应用列表变化，预加载可见区域的图标
 watch(
   () => props.apps,
-  () => {
-    nextTick(() => setupIconObserver())
-  }
+  async (newApps) => {
+    if (newApps && newApps.length > 0) {
+      await nextTick()
+      setupIconObserver()
+      // 预加载可见区域的图标
+      const packageNames = newApps.map(app => app.packageName)
+      await preloadVisibleIcons(packageNames)
+    }
+  },
+  { immediate: true }
 )
 
 onMounted(() => {
-  setupIconObserver()
+  if (props.apps && props.apps.length > 0) {
+    // 预加载可见区域的图标
+    const packageNames = props.apps.map(app => app.packageName)
+    preloadVisibleIcons(packageNames)
+  }
 })
 
 onUnmounted(() => {

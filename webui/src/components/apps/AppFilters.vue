@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { useI18n } from '../../utils/i18n'
 
@@ -44,12 +44,39 @@ const emit = defineEmits<{ 'update:searchQuery': [string]; 'update:filterType': 
 
 const { t } = useI18n()
 
+// 创建本地搜索模型，用于防抖
+const localSearchQuery = ref(props.searchQuery)
+
+// 防抖定时器
+let debounceTimer: NodeJS.Timeout | null = null
+
+// 计算属性，用于双向绑定输入框
 const searchModel = computed({
-  get: () => props.searchQuery,
-  set: (val: string) => emit('update:searchQuery', val),
+  get: () => localSearchQuery.value,
+  set: (val: string) => {
+    localSearchQuery.value = val
+    
+    // 如果已有定时器，清除它
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+    }
+    
+    // 设置新的防抖定时器
+    debounceTimer = setTimeout(() => {
+      emit('update:searchQuery', val)
+    }, 300) // 300ms 防抖延迟
+  }
 })
 
 const setFilter = (type: FilterType) => emit('update:filterType', type)
+
+// 监听外部传入的搜索查询，同步到本地状态
+watch(
+  () => props.searchQuery,
+  (newVal) => {
+    localSearchQuery.value = newVal
+  }
+)
 </script>
 
 <style scoped>

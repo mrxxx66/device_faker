@@ -112,6 +112,30 @@
             >
               <template #default="{ item }">
                 <div class="package-suggestion">
+                  <div class="app-icon-container" :data-package="item.packageName">
+                    <div
+                      v-if="
+                        !appIcons[item.packageName] ||
+                        (appIcons[item.packageName] !== 'fallback' && !iconLoaded[item.packageName])
+                      "
+                      class="icon-placeholder"
+                    ></div>
+                    <img
+                      v-if="appIcons[item.packageName] && appIcons[item.packageName] !== 'fallback'"
+                      :src="appIcons[item.packageName]"
+                      class="app-icon-img"
+                      :class="{ loaded: iconLoaded[item.packageName] }"
+                      alt=""
+                      loading="lazy"
+                      @load="onIconLoad(item.packageName)"
+                      @error="onIconError(item.packageName)"
+                    />
+                    <Smartphone
+                      v-if="appIcons[item.packageName] === 'fallback'"
+                      :size="24"
+                      class="app-icon-fallback"
+                    />
+                  </div>
                   <div class="app-info">
                     <div class="app-name">{{ item.appName }}</div>
                     <div class="package-name">{{ item.packageName }}</div>
@@ -126,6 +150,30 @@
 
           <div v-if="formData.packages.length > 0" class="package-list">
             <div v-for="(pkg, index) in formData.packages" :key="pkg" class="package-item">
+              <div class="app-icon-container" :data-package="pkg">
+                <div
+                  v-if="
+                    !appIcons[pkg] ||
+                    (appIcons[pkg] !== 'fallback' && !iconLoaded[pkg])
+                  "
+                  class="icon-placeholder-small"
+                ></div>
+                <img
+                  v-if="appIcons[pkg] && appIcons[pkg] !== 'fallback'"
+                  :src="appIcons[pkg]"
+                  class="app-icon-img-small"
+                  :class="{ loaded: iconLoaded[pkg] }"
+                  alt=""
+                  loading="lazy"
+                  @load="onIconLoad(pkg)"
+                  @error="onIconError(pkg)"
+                />
+                <Smartphone
+                  v-if="appIcons[pkg] === 'fallback'"
+                  :size="20"
+                  class="app-icon-fallback-small"
+                />
+              </div>
               <div class="package-info">
                 <span class="package-name-text">{{ pkg }}</span>
                 <span v-if="getAppName(pkg)" class="app-name-text">{{ getAppName(pkg) }}</span>
@@ -148,10 +196,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useConfigStore } from '../../stores/config'
 import { useAppsStore } from '../../stores/apps'
 import { useI18n } from '../../utils/i18n'
+import { useAppIcons } from '../../composables/useAppIcons'
+import { Smartphone } from 'lucide-vue-next'
 import { toast } from 'kernelsu-alt'
 import type { Template } from '../../types'
 
@@ -174,6 +224,9 @@ const visible = computed({
   get: () => props.modelValue,
   set: (val: boolean) => emit('update:modelValue', val),
 })
+
+// 添加应用图标功能
+const { appIcons, iconLoaded, onIconLoad, onIconError, setupIconObserver, teardownIconObserver, preloadVisibleIcons } = useAppIcons()
 
 const packageInput = ref('')
 const formData = ref({
@@ -251,6 +304,13 @@ function searchPackages(
       appName: app.appName,
       packageName: app.packageName,
     }))
+    
+  // 预加载这些应用的图标
+  if (suggestions.length > 0) {
+    const packageNames = suggestions.map(app => app.packageName)
+    preloadVisibleIcons(packageNames)
+  }
+  
   cb(suggestions)
 }
 
@@ -265,6 +325,10 @@ async function addPackage() {
 
   formData.value.packages.push(pkgName)
   packageInput.value = ''
+  
+  // 加载新增包的图标
+  await nextTick()
+  await onIconLoad(pkgName)
 }
 
 function removePackage(index: number) {
@@ -340,6 +404,24 @@ watch(
   },
   { immediate: true }
 )
+
+// 监听包列表变化，预加载图标
+watch(
+  () => formData.value.packages,
+  async (newPackages) => {
+    if (newPackages && newPackages.length > 0) {
+      await nextTick()
+      // 预加载已添加包的图标
+      await preloadVisibleIcons(newPackages)
+    }
+  },
+  { immediate: true }
+)
+
+// 组件卸载时清理观察器
+onUnmounted(() => {
+  teardownIconObserver()
+})
 </script>
 
 <style scoped>
@@ -382,24 +464,69 @@ watch(
 }
 
 .package-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.25rem 0;
+}
+
+.app-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.icon-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+  border-radius: 0.25rem;
+}
+
+.app-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-icon-img.loaded {
+  opacity: 1;
+}
+
+.app-icon-fallback {
+  color: var(--primary);
 }
 
 .app-info {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .app-name {
   font-size: 0.875rem;
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .package-name {
   font-size: 0.75rem;
   color: var(--text-secondary);
   font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .package-list {
@@ -431,6 +558,7 @@ watch(
 .package-item {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
   justify-content: space-between;
   padding: 0.625rem 0.75rem;
   background: var(--card);
@@ -440,6 +568,40 @@ watch(
 
 .package-item:hover {
   background: var(--hover);
+}
+
+.app-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.icon-placeholder-small {
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+  border-radius: 0.25rem;
+}
+
+.app-icon-img-small {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-icon-img-small.loaded {
+  opacity: 1;
+}
+
+.app-icon-fallback-small {
+  color: var(--primary);
 }
 
 .package-info {

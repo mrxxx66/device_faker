@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import AppConfigDialog from '../components/apps/AppConfigDialog.vue'
 import AppFilters from '../components/apps/AppFilters.vue'
 import AppList from '../components/apps/AppList.vue'

@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref, nextTick, watch } from 'vue'
 import TemplateDialog from '../components/templates/TemplateDialog.vue'
 import TemplateHeader from '../components/templates/TemplateHeader.vue'
 import TemplateList from '../components/templates/TemplateList.vue'
@@ -31,6 +31,7 @@ import { useAppsStore } from '../stores/apps'
 import { useConfigStore } from '../stores/config'
 import { useI18n } from '../utils/i18n'
 import { useLazyMessageBox } from '../utils/elementPlus'
+import { useAppIcons } from '../composables/useAppIcons'
 import { toast } from 'kernelsu-alt'
 import type { Template } from '../types'
 
@@ -39,6 +40,9 @@ const appsStore = useAppsStore()
 const { t, locale } = useI18n()
 const getMessageBox = useLazyMessageBox()
 
+// 添加应用图标功能
+const { preloadVisibleIcons } = useAppIcons()
+
 const templates = computed(() => configStore.getTemplates())
 
 const dialogVisible = ref(false)
@@ -46,6 +50,17 @@ const onlineDialogVisible = ref(false)
 const isEditing = ref(false)
 const editingTemplateName = ref<string | null>(null)
 const editingTemplate = ref<Template | null>(null)
+
+// 收集所有模板中的包，用于预加载图标
+const allTemplatePackages = computed(() => {
+  const allPackages: string[] = []
+  Object.values(templates.value).forEach(template => {
+    if (template.packages) {
+      allPackages.push(...template.packages)
+    }
+  })
+  return allPackages
+})
 
 function showOnlineDialog() {
   onlineDialogVisible.value = true
@@ -92,6 +107,19 @@ async function deleteTemplateConfirm(name: string) {
 function handleTemplateSaved() {
   // 保存后无需额外动作，保留扩展点
 }
+
+// 监听模板变化，预加载图标
+watch(
+  allTemplatePackages,
+  async (packages) => {
+    if (packages && packages.length > 0) {
+      await nextTick()
+      // 预加载所有模板中包含的包的图标
+      await preloadVisibleIcons(packages)
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   if (appsStore.installedApps.length === 0) {

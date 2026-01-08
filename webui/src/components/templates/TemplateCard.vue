@@ -52,9 +52,47 @@
       </div>
       <div v-if="template.packages && template.packages.length > 0" class="detail-item">
         <span class="detail-label">{{ t('templates.labels.packages') }}:</span>
-        <span class="detail-value"
-          >{{ template.packages.length }} {{ t('templates.labels.count_suffix') }}</span
-        >
+        <div class="packages-container">
+          <div class="package-list">
+            <div
+              v-for="pkg in displayedPackages"
+              :key="pkg"
+              class="package-item"
+              :title="getAppName(pkg) || pkg"
+            >
+              <div class="app-icon-container" :data-package="pkg">
+                <div
+                  v-if="
+                    !appIcons[pkg] ||
+                    (appIcons[pkg] !== 'fallback' && !iconLoaded[pkg])
+                  "
+                  class="icon-placeholder"
+                ></div>
+                <img
+                  v-if="appIcons[pkg] && appIcons[pkg] !== 'fallback'"
+                  :src="appIcons[pkg]"
+                  class="app-icon-img"
+                  :class="{ loaded: iconLoaded[pkg] }"
+                  alt=""
+                  loading="lazy"
+                  @load="onIconLoad(pkg)"
+                  @error="onIconError(pkg)"
+                />
+                <Smartphone
+                  v-if="appIcons[pkg] === 'fallback'"
+                  :size="24"
+                  class="app-icon-fallback"
+                />
+              </div>
+              <div class="package-info">
+                <div class="package-name">{{ getAppName(pkg) || pkg }}</div>
+              </div>
+            </div>
+          </div>
+          <div v-if="showMoreButton" class="more-packages" @click="toggleShowAll">
+            {{ showingAll ? t('common.show_less') : t('common.show_more') }} ({{ template.packages.length }})
+          </div>
+        </div>
       </div>
     </div>
 
@@ -85,9 +123,11 @@
 </template>
 
 <script setup lang="ts">
-import { Edit2, Trash2 } from 'lucide-vue-next'
-import { toRefs } from 'vue'
+import { Edit2, Trash2, Smartphone } from 'lucide-vue-next'
+import { toRefs, ref, computed, nextTick, watch, onMounted } from 'vue'
 import { useI18n } from '../../utils/i18n'
+import { useAppIcons } from '../../composables/useAppIcons'
+import { useAppsStore } from '../../stores/apps'
 import type { Template } from '../../types'
 
 const props = defineProps<{ name: string; template: Template }>()
@@ -95,6 +135,60 @@ const { name, template } = toRefs(props)
 const emit = defineEmits<{ edit: [string, Template]; delete: [string] }>()
 
 const { t } = useI18n()
+const appsStore = useAppsStore()
+
+// 应用图标功能
+const { appIcons, iconLoaded, onIconLoad, onIconError, preloadVisibleIcons } = useAppIcons()
+
+// 控制是否显示所有包
+const showingAll = ref(false)
+
+// 限制显示的包数量
+const MAX_DISPLAYED_PACKAGES = 5
+
+// 计算属性：获取要显示的包
+const displayedPackages = computed(() => {
+  if (!template.value.packages) return []
+  return showingAll.value 
+    ? template.value.packages 
+    : template.value.packages.slice(0, MAX_DISPLAYED_PACKAGES)
+})
+
+// 计算属性：是否需要显示"查看更多"按钮
+const showMoreButton = computed(() => {
+  return template.value.packages && template.value.packages.length > MAX_DISPLAYED_PACKAGES
+})
+
+// 切换显示状态
+const toggleShowAll = () => {
+  showingAll.value = !showingAll.value
+}
+
+// 根据包名获取应用名称
+const getAppName = (packageName: string) => {
+  const app = appsStore.installedApps.find(app => app.packageName === packageName)
+  return app ? app.appName : packageName
+}
+
+// 监听模板变化，预加载图标
+watch(
+  () => template.value.packages,
+  async (newPackages) => {
+    if (newPackages && newPackages.length > 0) {
+      await nextTick()
+      // 预加载包的图标
+      await preloadVisibleIcons(newPackages)
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(async () => {
+  if (template.value.packages && template.value.packages.length > 0) {
+    // 预加载包的图标
+    await preloadVisibleIcons(template.value.packages)
+  }
+})
 </script>
 
 <style scoped>
@@ -202,6 +296,88 @@ const { t } = useI18n()
   color: var(--text);
   flex: 1;
   word-break: break-all;
+}
+
+.packages-container {
+  width: 100%;
+}
+
+.package-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.package-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--card);
+  border-radius: 0.375rem;
+  max-width: 100%;
+}
+
+.app-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.icon-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+  border-radius: 0.25rem;
+}
+
+.app-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-icon-img.loaded {
+  opacity: 1;
+}
+
+.app-icon-fallback {
+  color: var(--primary);
+}
+
+.package-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.package-name {
+  font-size: 0.75rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-packages {
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  text-align: center;
+  user-select: none;
+}
+
+.more-packages:hover {
+  text-decoration: underline;
 }
 
 .template-meta {

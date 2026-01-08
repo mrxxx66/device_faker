@@ -10,6 +10,37 @@
     class="app-config-dialog"
     modal-class="app-config-modal"
   >
+    <div class="app-header" v-if="app">
+      <div class="app-icon-container" :data-package="app.packageName">
+        <div
+          v-if="
+            !appIcons[app.packageName] ||
+            (appIcons[app.packageName] !== 'fallback' && !iconLoaded[app.packageName])
+          "
+          class="icon-placeholder"
+        ></div>
+        <img
+          v-if="appIcons[app.packageName] && appIcons[app.packageName] !== 'fallback'"
+          :src="appIcons[app.packageName]"
+          class="app-icon-img"
+          :class="{ loaded: iconLoaded[app.packageName] }"
+          alt=""
+          loading="lazy"
+          @load="onIconLoad(app.packageName)"
+          @error="onIconError(app.packageName)"
+        />
+        <Smartphone
+          v-if="appIcons[app.packageName] === 'fallback'"
+          :size="48"
+          class="app-icon-fallback"
+        />
+      </div>
+      <div class="app-info">
+        <h2 class="app-name">{{ app.appName }}</h2>
+        <p class="app-package">{{ app.packageName }}</p>
+      </div>
+    </div>
+
     <div class="config-options">
       <el-radio-group v-model="configMode">
         <el-radio label="template">{{ t('apps.dialog.mode_template') }}</el-radio>
@@ -169,9 +200,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick, onUnmounted } from 'vue'
 import { useConfigStore } from '../../stores/config'
 import { useI18n } from '../../utils/i18n'
+import { useAppIcons } from '../../composables/useAppIcons'
+import { Smartphone } from 'lucide-vue-next'
 import { toast } from 'kernelsu-alt'
 import type { InstalledApp, AppConfig } from '../../types'
 
@@ -190,6 +223,9 @@ const emit = defineEmits<{ 'update:modelValue': [boolean]; saved: [] }>()
 
 const configStore = useConfigStore()
 const { t } = useI18n()
+
+// 添加应用图标功能
+const { appIcons, iconLoaded, onIconLoad, onIconError, preloadVisibleIcons } = useAppIcons()
 
 const templates = computed(() => configStore.getTemplates())
 const visible = computed({
@@ -410,9 +446,12 @@ async function saveAppConfig() {
 
 watch(
   () => [props.app, visible.value],
-  ([, dialogVisible]) => {
-    if (dialogVisible) {
+  async ([app, dialogVisible]) => {
+    if (dialogVisible && app) {
       syncFromExistingConfig()
+      // 预加载当前应用的图标
+      await nextTick()
+      await preloadVisibleIcons([app.packageName])
     }
   },
   { immediate: true }
@@ -420,6 +459,75 @@ watch(
 </script>
 
 <style scoped>
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+
+.app-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.icon-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--background);
+  border-radius: 0.25rem;
+}
+
+.app-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-icon-img.loaded {
+  opacity: 1;
+}
+
+.app-icon-fallback {
+  color: var(--primary);
+}
+
+.app-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-package {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .config-options {
   margin-bottom: 1.5rem;
 }
