@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2 class="page-title">{{ t('templates.title') }}</h2>
       <el-button-group>
-        <el-button type="primary" @click="showCreateDialog()">
+        <el-button type="primary" @click="showCreateTemplateDialog()">
           {{ t('templates.create_btn') }}
         </el-button>
         <el-button type="primary" @click="showOnlineTemplateDialog()">
@@ -77,7 +77,7 @@ function showOnlineTemplateDialog() {
   showOnlineDialog.value = true
 }
 
-function showCreateDialog() {
+function showCreateTemplateDialog() {
   editingTemplate.value = null
   showCreateDialog.value = true
 }
@@ -125,7 +125,7 @@ function handleTemplateSaved() {
   gap: 1rem;
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
+  box-sizing: box;
   overflow: hidden;
 }
 </style>

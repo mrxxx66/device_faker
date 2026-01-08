@@ -278,6 +278,7 @@ export const useConfigStore = defineStore('config', () => {
 
     return null;
   }
+}
 
   // 切换工作模式
   async function toggleWorkMode() {
