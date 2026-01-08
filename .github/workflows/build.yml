@@ -103,6 +103,11 @@ jobs:
           mkdir -p release
           zip -r release/device-faker-module-$(date +%Y%m%d_%H%M%S).zip module/
 
+      - name: Get release file name
+        run: |
+          RELEASE_FILE=$(ls release/ | head -n 1)
+          echo "RELEASE_FILE=$RELEASE_FILE" >> $GITHUB_ENV
+          
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -136,6 +141,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/*.zip
-          asset_name: device-faker-module-${{ github.ref_name }}.zip
+          asset_path: ./release/${{ env.RELEASE_FILE }}
+          asset_name: ${{ env.RELEASE_FILE }}
           asset_content_type: application/zip
