@@ -7,6 +7,7 @@ use jni::sys::JNINativeMethod;
 use crate::config::MergedAppConfig;
 use crate::state::{FAKE_PROPS, ORIGINAL_NATIVE_GET, OriginalNativeGet};
 use zygisk_api::api::{V4, ZygiskApi};
+use log::warn;
 
 /// 根据合并配置 Hook android.os.Build 的静态字段。
 pub fn hook_build_fields(env: &mut JNIEnv, merged_config: &MergedAppConfig) -> anyhow::Result<()> {
@@ -104,13 +105,19 @@ pub unsafe extern "C" fn native_get_hook(
 ) -> jni::sys::jstring {
     let mut env_wrapper = match unsafe { JNIEnv::from_raw(env) } {
         Ok(e) => e,
-        Err(_) => return def,
+        Err(_) => {
+            warn!("Failed to create JNIEnv in native_get_hook");
+            return def;
+        }
     };
 
     let key_jstring = unsafe { JString::from_raw(key) };
     let key_str = match env_wrapper.get_string(&key_jstring) {
         Ok(s) => s,
-        Err(_) => return def,
+        Err(e) => {
+            warn!("Failed to get string from JString in native_get_hook: {:?}", e);
+            return def;
+        }
     };
     let key_string: String = key_str.into();
 
@@ -120,6 +127,7 @@ pub unsafe extern "C" fn native_get_hook(
             props.get(&key_string).and_then(|fake_value| {
                 env_wrapper
                     .new_string(fake_value)
+                    .map_err(|e| warn!("Failed to create new string: {:?}", e))
                     .ok()
                     .map(|s| s.into_raw())
             })

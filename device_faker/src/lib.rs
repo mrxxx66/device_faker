@@ -177,16 +177,22 @@ impl MyModule {
                 && !package.is_empty()
             {
                 return Ok(package.to_string());
+            } else {
+                log::warn!("Could not extract package name from app_data_dir: {}", app_data);
             }
         }
 
         let mut nice_name: String = env
             .get_string(args.nice_name)
-            .context("Failed to get package name")?
+            .context("Failed to get package name from nice_name")?
             .into();
 
         if let Some(idx) = nice_name.find(':') {
             nice_name.truncate(idx);
+        }
+
+        if nice_name.is_empty() {
+            anyhow::bail!("Extracted package name is empty");
         }
 
         Ok(nice_name)
@@ -275,12 +281,17 @@ impl SpoofMode {
 
 fn load_config() -> anyhow::Result<Option<Config>> {
     if !Path::new(CONFIG_PATH).exists() {
+        log::warn!("Config file does not exist at {CONFIG_PATH}, using default settings");
         return Ok(None);
     }
 
     let config_content = fs::read_to_string(CONFIG_PATH)
         .with_context(|| format!("Failed to read config at {CONFIG_PATH}"))?;
-    let config = Config::from_toml(&config_content)?;
+    let config = Config::from_toml(&config_content)
+        .map_err(|e| {
+            error!("Failed to parse config TOML: {:#}", e);
+            e
+        })?;
     Ok(Some(config))
 }
 

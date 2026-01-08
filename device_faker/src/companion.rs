@@ -230,9 +230,11 @@ fn apply_resetprop(path: &str, key: &str, value: &str) -> anyhow::Result<()> {
     let status = std::process::Command::new(path)
         .arg(key)
         .arg(value)
-        .status()?;
+        .status()
+        .with_context(|| format!("Failed to execute resetprop command: {} {} {}", path, key, value))?;
+        
     if !status.success() {
-        anyhow::bail!("resetprop failed for {key}");
+        anyhow::bail!("resetprop command failed for key '{}': exit code {}", key, status.code().unwrap_or(-1));
     }
     Ok(())
 }
