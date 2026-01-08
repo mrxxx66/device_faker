@@ -1,0 +1,31 @@
+name: Cleanup Actions History
+
+on:
+  schedule:
+    # 每月第一天运行
+    - cron: '0 0 1 * *'
+  workflow_dispatch: # 支持手动触发
+    inputs:
+      retain_days:
+        description: '保留天数'
+        required: false
+        default: '30'
+        type: string
+      keep_minimum_runs:
+        description: '保留最小运行次数'
+        required: false
+        default: '6'
+        type: string
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Delete old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: ${{ inputs.retain_days || 30 }}  # 使用输入参数或默认值
+          keep_minimum_runs: ${{ inputs.keep_minimum_runs || 6 }}  # 使用输入参数或默认值
