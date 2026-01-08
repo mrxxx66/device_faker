@@ -114,7 +114,6 @@ jobs:
           fi
 
       - name: Extract version information
-        id: extract_version
         run: |
           VERSION=$(grep '^version=' module/module.prop | cut -d'=' -f2)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -125,7 +124,7 @@ jobs:
           mkdir -p release
           zip -r "release/${{ env.ZIP_FILENAME }}" module/
 
-      - name: Get release file name
+      - name: Prepare release variables
         run: |
           echo "RELEASE_FILE=${{ env.ZIP_FILENAME }}" >> $GITHUB_ENV
 
@@ -137,15 +136,13 @@ jobs:
           fi
           
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
+          files: ./release/${{ env.RELEASE_FILE }}
           body: |
             ## Device Faker Module Release
             This is an automated release of the Device Faker Zygisk module.
@@ -162,13 +159,3 @@ jobs:
             
             ### Changelog
             See the [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for a list of changes since the last release.
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/${{ env.RELEASE_FILE }}
-          asset_name: ${{ env.RELEASE_FILE }}
-          asset_content_type: application/zip
