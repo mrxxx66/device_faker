@@ -1,6 +1,6 @@
-# Device Faker Changelog
+# Changelog
 
-## v1.3.0 (2026-01-08)
+## v1.4.7 (2026-01-09)
 
 - Added improved device faker functionality
 - Enhanced WebUI for configuration
