@@ -97,7 +97,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: device_faker
-          path: module/
+          path: module_temp/
 
       - name: Sync Update.json with module.prop version
         run: |
@@ -109,9 +109,26 @@ jobs:
           git config --local user.name "GitHub Action"
           git add Update.json
           if ! git diff --cached --quiet; then
-            git commit -m "Auto-sync Update.json for version $(grep '^version=' module/module.prop | cut -d'=' -f2)"
+            git commit -m "Auto-sync Update.json for version $(grep '^version=' module_temp/module.prop | cut -d'=' -f2)"
             git push origin HEAD:main
           fi
+
+      - name: Prepare module directory for packaging
+        run: |
+          # Move contents from module_temp to current module dir
+          cp -r module_temp/* module/
+          
+      - name: Ensure proper line endings for shell scripts
+        run: |
+          # Convert line endings to LF for all .sh files
+          find module -name "*.sh" -exec sh -c '
+            for file; do
+              # Replace CRLF with LF
+              temp_file=$(mktemp)
+              cat "$file" | tr -d "\r" > "$temp_file"
+              mv "$temp_file" "$file"
+            done
+          ' _ {} +
 
       - name: Extract version information
         run: |
@@ -119,10 +136,11 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "ZIP_FILENAME=device_faker-$VERSION.zip" >> $GITHUB_ENV
 
-      - name: Create release directory
+      - name: Create release directory and package module
         run: |
           mkdir -p release
-          zip -r "release/${{ env.ZIP_FILENAME }}" module/
+          # Create ZIP with proper structure (no extra folder level)
+          (cd module && zip -r "../release/${{ env.ZIP_FILENAME }}" . -x "*/\.*")
 
       - name: Prepare release variables
         run: |
@@ -136,6 +154,7 @@ jobs:
           fi
           
       - name: Create Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
