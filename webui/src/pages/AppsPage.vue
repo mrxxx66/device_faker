@@ -70,17 +70,14 @@ const configuredApps = computed<InstalledApp[]>(() => {
 
 // 缓存allApps的计算结果，避免每次重新计算
 const allApps = computed<InstalledApp[]>(() => {
-  // 使用Set来快速检查包名是否已存在，避免重复添加
-  const packageSet = new Set<string>()
-  const normalizedSet = new Map<string, number>() // 归一化包名到索引的映射
   const result: InstalledApp[] = []
+  const packageIndex = new Map<string, number>()
+  const normalizedIndex = new Map<string, number>()
 
-  // 首先添加已安装应用
+  // 保留已安装应用的原始顺序
   for (const app of installedApps.value) {
     const normalized = normalizePackageName(app.packageName)
-    
-    // 如果包名或归一化包名已存在，则跳过
-    if (packageSet.has(app.packageName) || normalizedSet.has(normalized)) continue
+    if (packageIndex.has(app.packageName)) continue
 
     const entry = {
       ...app,
@@ -89,28 +86,33 @@ const allApps = computed<InstalledApp[]>(() => {
 
     const idx = result.length
     result.push(entry)
-    packageSet.add(app.packageName)
-    normalizedSet.set(normalized, idx)
+    packageIndex.set(app.packageName, idx)
+    if (!normalizedIndex.has(normalized)) {
+      normalizedIndex.set(normalized, idx)
+    }
   }
 
-  // 然后添加已配置但未安装的应用
+  // 合并配置项：如果包名不同（即使归一化后相同），也应显示为不同应用
   for (const app of configuredApps.value) {
-    // 如果包名已存在，则跳过
-    if (packageSet.has(app.packageName)) continue
+    // 如果精确包名已存在，跳过
+    if (packageIndex.has(app.packageName)) continue
 
+    // 查找具有相同归一化包名的已存在应用，复用其展示信息
     const normalized = normalizePackageName(app.packageName)
-    const existingIdx = normalizedSet.get(normalized)
+    const existingIdx = normalizedIndex.get(normalized)
 
     const entry = {
       // 如果有相同归一化包名的应用，复用其展示信息，否则使用默认信息
       ...(existingIdx !== undefined ? result[existingIdx] : {}),
       packageName: app.packageName,
       appName: existingIdx !== undefined ? result[existingIdx].appName : app.packageName,
-      installed: existingIdx !== undefined ? result[existingIdx].installed : (app.installed ?? false),
+      installed:
+        existingIdx !== undefined ? result[existingIdx].installed : (app.installed ?? false),
     }
 
+    const idx = result.length
     result.push(entry)
-    packageSet.add(app.packageName)
+    packageIndex.set(app.packageName, idx)
   }
 
   return result

@@ -304,25 +304,42 @@ fn configure_log_level(debug_enabled: bool) {
     log::set_max_level(level);
 }
 
+// 初始化文件日志
+fn init_file_logging() {
+    // 创建日志目录
+    if let Err(e) = fs::create_dir_all(LOG_DIR) {
+        #[cfg(target_os = "android")]
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(LevelFilter::Error)
+                .with_tag("DeviceFaker"),
+        );
+        error!("Failed to create log directory: {e}");
+        return;
+    }
+
+    // 配置文件日志 - 使用Result处理而不是expect
+    let log_file_path = format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S"));
+    if let Err(e) = simple_logging::log_to_file(&log_file_path, LevelFilter::Debug) {
+        #[cfg(target_os = "android")]
+        android_logger::init_once(
+            android_logger::Config::default()
+                .with_max_level(LevelFilter::Error)
+                .with_tag("DeviceFaker"),
+        );
+        error!("Failed to initialize file logger: {e}");
+    } else {
+        info!("File logging initialized: {}", log_file_path);
+    }
+}
+
 // 延迟初始化文件日志（在应用专门化时）
 fn init_file_logging_if_needed() {
     use std::sync::Once;
     static INIT: Once = Once::new();
     
     INIT.call_once(|| {
-        // 创建日志目录
-        if let Err(e) = fs::create_dir_all(LOG_DIR) {
-            error!("Failed to create log directory: {e}");
-            return;
-        }
-
-        // 配置文件日志
-        let log_file_path = format!("{}/device_faker_{}.log", LOG_DIR, Local::now().format("%Y%m%d_%H%M%S"));
-        if let Err(e) = simple_logging::log_to_file(&log_file_path, LevelFilter::Debug) {
-            error!("Failed to initialize file logger: {e}");
-        } else {
-            info!("File logging initialized: {}", log_file_path);
-        }
+        init_file_logging();
     });
 }
 

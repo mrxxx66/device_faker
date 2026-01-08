@@ -2,9 +2,14 @@
   <div class="template-page">
     <div class="page-header">
       <h2 class="page-title">{{ t('templates.title') }}</h2>
-      <el-button type="primary" @click="showCreateDialog()">
-        {{ t('templates.create_btn') }}
-      </el-button>
+      <el-button-group>
+        <el-button type="primary" @click="showCreateDialog()">
+          {{ t('templates.create_btn') }}
+        </el-button>
+        <el-button type="primary" @click="showOnlineTemplateDialog()">
+          {{ t('templates.online_btn') }}
+        </el-button>
+      </el-button-group>
     </div>
 
     <TemplateList :templates="templates" @edit="handleEdit" @delete="deleteTemplateConfirm" />
@@ -38,6 +43,10 @@
     color: var(--text);
     margin: 0;
   }
+
+  .el-button-group {
+    display: flex;
+  }
   </style>
 </template>
 
@@ -64,7 +73,7 @@ const showEditDialog = ref(false)
 const showOnlineDialog = ref(false)
 const editingTemplate = ref<Partial<Template> | null>(null)
 
-function showOnlineDialog() {
+function showOnlineTemplateDialog() {
   showOnlineDialog.value = true
 }
 

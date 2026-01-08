@@ -240,7 +240,7 @@ export const useConfigStore = defineStore('config', () => {
     return normalizedPackageConfigMap.value.has(normalized);
   }
 
-  // 获取包名的配置 - 优化版本，使用预构建的映射
+  // 获取包名的配置 - 完全优化版本，只使用预构建的映射
   function getPackageConfig(
     packageName: string
   ): (Template & { source: string }) | AppConfig | null {
@@ -250,7 +250,7 @@ export const useConfigStore = defineStore('config', () => {
     const directMatch = packageConfigMap.value.get(packageName);
     if (directMatch) {
       if (directMatch.type === 'app') {
-        // 使用预构建的映射替代数组查找
+        // 直接从预构建的映射中获取
         return appMap.value.get(packageName) || null;
       } else {
         const template = templates.value[directMatch.source];
@@ -268,9 +268,8 @@ export const useConfigStore = defineStore('config', () => {
     
     if (normalizedMatch) {
       if (normalizedMatch.type === 'app') {
-        // 使用归一化包名映射查找应用
-        const app = normalizedAppMap.value.get(normalized);
-        return app || null;
+        // 直接从预构建的归一化映射中获取
+        return normalizedAppMap.value.get(normalized) || null;
       } else {
         const template = templates.value[normalizedMatch.source];
         return template ? { ...template, source: normalizedMatch.source } : null;
