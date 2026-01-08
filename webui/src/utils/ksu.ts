@@ -152,42 +152,51 @@ export async function getInstalledApps() {
     // 去重
     packageList = Array.from(new Set(packageList))
 
-    const apps = []
+    // 并行获取应用信息，限制并发数避免性能问题
+    const CONCURRENT_LIMIT = 10; // 限制并发数量，避免一次性发起太多请求
+    const apps = [];
+    
+    for (let i = 0; i < packageList.length; i += CONCURRENT_LIMIT) {
+      const batch = packageList.slice(i, i + CONCURRENT_LIMIT);
+      
+      const batchResults = await Promise.all(
+        batch.map(async (pkg) => {
+          const normalizedPkg = normalizePackageName(pkg);
+          let appName = pkg;
+          let versionName = '';
+          let versionCode = 0;
 
-    // 批量获取应用信息
-    for (const pkg of packageList) {
-      const normalizedPkg = normalizePackageName(pkg)
-      let appName = pkg
-      let versionName = ''
-      let versionCode = 0
+          // 优先使用 WebUI-X $packageManager API 获取应用信息
+          const webUIXInfo = getAppInfoViaWebUIX(normalizedPkg);
+          if (webUIXInfo) {
+            appName = webUIXInfo.appName;
+            versionName = webUIXInfo.versionName;
+            versionCode = webUIXInfo.versionCode;
+          } else {
+            // 回退到 kernelsu-alt API
+            const ksuInfo = await getAppInfoViaKernelSU(normalizedPkg);
+            if (ksuInfo) {
+              appName = ksuInfo.appName;
+              versionName = ksuInfo.versionName;
+              versionCode = ksuInfo.versionCode;
+            }
+          }
 
-      // 优先使用 WebUI-X $packageManager API 获取应用信息
-      const webUIXInfo = getAppInfoViaWebUIX(normalizedPkg)
-      if (webUIXInfo) {
-        appName = webUIXInfo.appName
-        versionName = webUIXInfo.versionName
-        versionCode = webUIXInfo.versionCode
-      } else {
-        // 回退到 kernelsu-alt API
-        const ksuInfo = await getAppInfoViaKernelSU(normalizedPkg)
-        if (ksuInfo) {
-          appName = ksuInfo.appName
-          versionName = ksuInfo.versionName
-          versionCode = ksuInfo.versionCode
-        }
-      }
+          return {
+            packageName: pkg,
+            appName,
+            icon: '',
+            versionName,
+            versionCode,
+            installed: true,
+          };
+        })
+      );
 
-      apps.push({
-        packageName: pkg,
-        appName,
-        icon: '',
-        versionName,
-        versionCode,
-        installed: true,
-      })
+      apps.push(...batchResults);
     }
 
-    return apps
+    return apps;
   } catch {
     return []
   }

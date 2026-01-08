@@ -75,6 +75,80 @@ export const useConfigStore = defineStore('config', () => {
   // 获取所有应用配置（使用 computed 缓存）
   const apps = computed(() => config.value.apps || [])
 
+  // 创建应用包名到应用配置的映射，用于提升性能
+  const appMap = computed(() => {
+    const map = new Map<string, AppConfig>();
+    
+    for (const app of apps.value) {
+      map.set(app.package, app);
+    }
+    
+    return map;
+  });
+
+  // 创建归一化包名到应用配置的映射，用于向后兼容
+  const normalizedAppMap = computed(() => {
+    const map = new Map<string, AppConfig>();
+    
+    for (const app of apps.value) {
+      const normalized = normalizePackageName(app.package);
+      // 如果已经有相同的归一化包名，则跳过，确保首次出现的应用优先
+      if (!map.has(normalized)) {
+        map.set(normalized, app);
+      }
+    }
+    
+    return map;
+  });
+
+  // 创建一个快速查找映射，用于提升性能
+  const packageConfigMap = computed(() => {
+    const map = new Map<string, { type: 'app' | 'template', source: string }>()
+    
+    // 添加直接配置的应用
+    for (const app of apps.value) {
+      map.set(app.package, { type: 'app', source: app.package })
+    }
+    
+    // 添加模板中的包
+    for (const [templateName, template] of Object.entries(templates.value)) {
+      if (template.packages) {
+        for (const pkg of template.packages) {
+          map.set(pkg, { type: 'template', source: templateName })
+        }
+      }
+    }
+    
+    return map
+  })
+
+  // 创建归一化包名的映射，用于向后兼容
+  const normalizedPackageConfigMap = computed(() => {
+    const map = new Map<string, { type: 'app' | 'template', source: string }>()
+    
+    // 添加直接配置的应用
+    for (const app of apps.value) {
+      const normalized = normalizePackageName(app.package)
+      if (!map.has(normalized)) {
+        map.set(normalized, { type: 'app', source: app.package })
+      }
+    }
+    
+    // 添加模板中的包
+    for (const [templateName, template] of Object.entries(templates.value)) {
+      if (template.packages) {
+        for (const pkg of template.packages) {
+          const normalized = normalizePackageName(pkg)
+          if (!map.has(normalized)) {
+            map.set(normalized, { type: 'template', source: templateName })
+          }
+        }
+      }
+    }
+    
+    return map
+  })
+
   // 获取应用伪装数量（使用 computed 自动缓存）
   const deviceFakerCount = computed(() => {
     let count = 0
@@ -141,78 +215,69 @@ export const useConfigStore = defineStore('config', () => {
   // 删除应用配置
   function deleteApp(packageName: string) {
     if (config.value.apps) {
-      config.value.apps = config.value.apps.filter((a: AppConfig) => a.package !== packageName)
+      const index = config.value.apps.findIndex((a: AppConfig) => a.package === packageName)
+      if (index !== -1) {
+        config.value.apps.splice(index, 1)
+      }
     }
   }
 
-  // 检查包名是否已配置
+  // 检查包名是否已配置 - 优化版本，使用预构建的映射
   function isPackageConfigured(packageName: string): boolean {
-    const hasUserSuffix = /@\d+$/.test(packageName)
+    const hasUserSuffix = /@\d+$/.test(packageName);
 
-    // 先尝试精确匹配，保留多用户后缀
-    for (const template of Object.values(templates.value)) {
-      if (template.packages?.includes(packageName)) {
-        return true
-      }
-    }
-
-    if (apps.value.some((a) => a.package === packageName)) {
-      return true
+    // 先尝试精确匹配
+    if (packageConfigMap.value.has(packageName)) {
+      return true;
     }
 
     // 仅当调用方带有 userId 后缀时，才做归一化匹配以兼容旧配置
     if (!hasUserSuffix) {
-      return false
+      return false;
     }
 
-    const normalized = normalizePackageName(packageName)
-
-    for (const template of Object.values(templates.value)) {
-      if (template.packages?.some((pkg) => normalizePackageName(pkg) === normalized)) {
-        return true
-      }
-    }
-
-    return apps.value.some((a) => normalizePackageName(a.package) === normalized)
+    const normalized = normalizePackageName(packageName);
+    return normalizedPackageConfigMap.value.has(normalized);
   }
 
-  // 获取包名的配置
+  // 获取包名的配置 - 优化版本，使用预构建的映射
   function getPackageConfig(
     packageName: string
   ): (Template & { source: string }) | AppConfig | null {
-    const hasUserSuffix = /@\d+$/.test(packageName)
+    const hasUserSuffix = /@\d+$/.test(packageName);
 
     // 先精确匹配
-    const exactApp = apps.value.find((a) => a.package === packageName)
-    if (exactApp) {
-      return exactApp
-    }
-
-    for (const [name, template] of Object.entries(templates.value)) {
-      if (template.packages?.includes(packageName)) {
-        return { ...template, source: name }
+    const directMatch = packageConfigMap.value.get(packageName);
+    if (directMatch) {
+      if (directMatch.type === 'app') {
+        // 使用预构建的映射替代数组查找
+        return appMap.value.get(packageName) || null;
+      } else {
+        const template = templates.value[directMatch.source];
+        return template ? { ...template, source: directMatch.source } : null;
       }
     }
 
     // 仅当调用方带有 userId 后缀时，才做归一化匹配（向后兼容旧配置）
     if (!hasUserSuffix) {
-      return null
+      return null;
     }
 
-    const normalized = normalizePackageName(packageName)
-
-    const normalizedApp = apps.value.find((a) => normalizePackageName(a.package) === normalized)
-    if (normalizedApp) {
-      return normalizedApp
-    }
-
-    for (const [name, template] of Object.entries(templates.value)) {
-      if (template.packages?.some((pkg) => normalizePackageName(pkg) === normalized)) {
-        return { ...template, source: name }
+    const normalized = normalizePackageName(packageName);
+    const normalizedMatch = normalizedPackageConfigMap.value.get(normalized);
+    
+    if (normalizedMatch) {
+      if (normalizedMatch.type === 'app') {
+        // 使用归一化包名映射查找应用
+        const app = normalizedAppMap.value.get(normalized);
+        return app || null;
+      } else {
+        const template = templates.value[normalizedMatch.source];
+        return template ? { ...template, source: normalizedMatch.source } : null;
       }
     }
 
-    return null
+    return null;
   }
 
   // 切换工作模式
@@ -232,6 +297,9 @@ export const useConfigStore = defineStore('config', () => {
     apps,
     deviceFakerCount,
     templateCount,
+    // 优化的查找映射
+    packageConfigMap,
+    normalizedPackageConfigMap,
     // 函数
     loadConfig,
     saveConfig,

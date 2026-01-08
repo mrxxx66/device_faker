@@ -74,22 +74,10 @@ function handlePageChange(pageId: string) {
     requestAnimationFrame(() => {
       currentPage.value = pageId
 
-      nextTick(() => {
-        // 触发布局更新，确保元素适应新宽度
-        const mainContent = document.querySelector('.main-content') as HTMLElement
-        if (mainContent) {
-          // 触发重排
-          void mainContent.offsetHeight
-        }
-
-        // 触发窗口 resize 事件，确保全局布局更新
-        window.dispatchEvent(new Event('resize'))
-
-        // 重置标志
-        setTimeout(() => {
-          isChangingPage = false
-        }, 50)
-      })
+      // 重置标志
+      setTimeout(() => {
+        isChangingPage = false
+      }, 50)
     })
   }
 }
@@ -127,40 +115,6 @@ watchEffect(() => {
     // 浅色模式：匹配浅色毛玻璃效果
     document.getElementById('theme-color')?.setAttribute('content', '#f2f9ff')
   }
-
-  // 强制重新计算样式，确保毛玻璃效果正确应用
-  // 通过强制重绘来解决样式同步问题
-  requestAnimationFrame(() => {
-    // 强制触发重新渲染
-    const appContainer = document.querySelector('.app-container') as HTMLElement
-    if (appContainer) {
-      // 强制重排
-      appContainer.style.display = 'none'
-      void appContainer.offsetHeight // 触发重排
-      appContainer.style.display = ''
-    }
-
-    // 强制所有毛玻璃元素重新计算样式
-    const glassElements = document.querySelectorAll('.glass-effect')
-    glassElements.forEach((element) => {
-      const el = element as HTMLElement
-      // 使用强制重绘技巧
-      el.style.willChange = 'transform, opacity, backdrop-filter'
-      el.style.transform = 'translateZ(0) scale(1.001)'
-      setTimeout(() => {
-        el.style.transform = 'translateZ(0)'
-        setTimeout(() => {
-          el.style.willChange = ''
-          el.style.transform = ''
-        }, 50)
-      }, 0)
-    })
-
-    // 触发所有样式重新计算
-    document.body.style.webkitFilter = 'hide'
-    void document.body.offsetHeight
-    document.body.style.webkitFilter = ''
-  })
 })
 
 // 计算滚动条宽度
@@ -199,16 +153,12 @@ function applyScrollbarWidth() {
     const newPadding = hasScrollbar ? `${basePadding + width}px` : `${basePadding}px`
     if (mainContent.style.paddingRight !== newPadding) {
       mainContent.style.paddingRight = newPadding
-      // 记录调试信息
-      console.warn(
-        `[DeviceFaker] 滚动条宽度补偿更新: 滚动条宽度=${width}px, hasScrollbar=${hasScrollbar}, paddingRight=${newPadding}`
-      )
     }
   }
 
   // 记录宽度变化
   if (width !== previousWidth) {
-    console.warn(`[DeviceFaker] 滚动条宽度变化: 旧=${previousWidth}px, 新=${width}px`)
+    console.debug(`[DeviceFaker] 滚动条宽度变化: 旧=${previousWidth}px, 新=${width}px`)
   }
 }
 

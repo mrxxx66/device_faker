@@ -60,30 +60,6 @@
               class="package-item"
               :title="getAppName(pkg) || pkg"
             >
-              <div class="app-icon-container" :data-package="pkg">
-                <div
-                  v-if="
-                    !appIcons[pkg] ||
-                    (appIcons[pkg] !== 'fallback' && !iconLoaded[pkg])
-                  "
-                  class="icon-placeholder"
-                ></div>
-                <img
-                  v-if="appIcons[pkg] && appIcons[pkg] !== 'fallback'"
-                  :src="appIcons[pkg]"
-                  class="app-icon-img"
-                  :class="{ loaded: iconLoaded[pkg] }"
-                  alt=""
-                  loading="lazy"
-                  @load="onIconLoad(pkg)"
-                  @error="onIconError(pkg)"
-                />
-                <Smartphone
-                  v-if="appIcons[pkg] === 'fallback'"
-                  :size="24"
-                  class="app-icon-fallback"
-                />
-              </div>
               <div class="package-info">
                 <div class="package-name">{{ getAppName(pkg) || pkg }}</div>
               </div>
@@ -123,11 +99,11 @@
 </template>
 
 <script setup lang="ts">
-import { Edit2, Trash2, Smartphone } from 'lucide-vue-next'
-import { toRefs, ref, computed, nextTick, watch, onMounted } from 'vue'
+import { Edit2, Trash2 } from 'lucide-vue-next'
+import { toRefs, ref, computed, onMounted } from 'vue'
 import { useI18n } from '../../utils/i18n'
-import { useAppIcons } from '../../composables/useAppIcons'
 import { useAppsStore } from '../../stores/apps'
+import { useConfigStore } from '../../stores/config'
 import type { Template } from '../../types'
 
 const props = defineProps<{ name: string; template: Template }>()
@@ -136,9 +112,7 @@ const emit = defineEmits<{ edit: [string, Template]; delete: [string] }>()
 
 const { t } = useI18n()
 const appsStore = useAppsStore()
-
-// 应用图标功能
-const { appIcons, iconLoaded, onIconLoad, onIconError, preloadVisibleIcons } = useAppIcons()
+const configStore = useConfigStore()
 
 // 控制是否显示所有包
 const showingAll = ref(false)
@@ -164,30 +138,15 @@ const toggleShowAll = () => {
   showingAll.value = !showingAll.value
 }
 
-// 根据包名获取应用名称
+// 根据包名获取应用名称 - 优化版本，使用映射
 const getAppName = (packageName: string) => {
-  const app = appsStore.installedApps.find(app => app.packageName === packageName)
+  // 使用 configStore 的 appMap 以获得 O(1) 的查找性能
+  const app = configStore.appMap.get(packageName)
   return app ? app.appName : packageName
 }
 
-// 监听模板变化，预加载图标
-watch(
-  () => template.value.packages,
-  async (newPackages) => {
-    if (newPackages && newPackages.length > 0) {
-      await nextTick()
-      // 预加载包的图标
-      await preloadVisibleIcons(newPackages)
-    }
-  },
-  { immediate: true }
-)
-
-onMounted(async () => {
-  if (template.value.packages && template.value.packages.length > 0) {
-    // 预加载包的图标
-    await preloadVisibleIcons(template.value.packages)
-  }
+onMounted(() => {
+  // 组件挂载时不需要预加载图标，因为我们已经移除了图标
 })
 </script>
 
@@ -312,45 +271,16 @@ onMounted(async () => {
 .package-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
   padding: 0.25rem;
   background: var(--card);
   border-radius: 0.375rem;
   max-width: 100%;
 }
 
-.app-icon-container {
-  position: relative;
+.package-info {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.icon-placeholder {
-  width: 100%;
-  height: 100%;
-  background: var(--background);
-  border-radius: 0.25rem;
-}
-
-.app-icon-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.app-icon-img.loaded {
-  opacity: 1;
-}
-
-.app-icon-fallback {
-  color: var(--primary);
+  flex-direction: column;
+  min-width: 0;
 }
 
 .package-info {

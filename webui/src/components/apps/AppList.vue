@@ -1,45 +1,21 @@
 <template>
   <div v-loading="loading" class="apps-list">
     <div
-      v-for="app in apps"
+      v-for="app in appsWithStatus"
       :key="app.packageName"
       class="app-card glass-effect"
       @click="emit('select', app)"
     >
-      <div class="app-icon-container" :data-package="app.packageName">
-        <div
-          v-if="
-            !appIcons[app.packageName] ||
-            (appIcons[app.packageName] !== 'fallback' && !iconLoaded[app.packageName])
-          "
-          class="icon-loader"
-        ></div>
-        <img
-          v-if="appIcons[app.packageName] && appIcons[app.packageName] !== 'fallback'"
-          :src="appIcons[app.packageName]"
-          class="app-icon-img"
-          :class="{ loaded: iconLoaded[app.packageName] }"
-          alt=""
-          loading="lazy"
-          @load="onIconLoad(app.packageName)"
-          @error="onIconError(app.packageName)"
-        />
-        <Smartphone
-          v-if="appIcons[app.packageName] === 'fallback'"
-          :size="40"
-          class="app-icon-fallback"
-        />
-      </div>
       <div class="app-info">
         <h3 class="app-name">{{ app.appName }}</h3>
         <p class="app-package">{{ app.packageName }}</p>
         <div class="app-status-group">
-          <p v-if="isConfigured(app.packageName)" class="app-status configured">
+          <p v-if="app.isConfigured" class="app-status configured">
             <Check :size="14" />
             {{ t('apps.status.configured') }}
           </p>
           <p v-else class="app-status unconfigured">{{ t('apps.status.unconfigured') }}</p>
-          <p v-if="!isInstalled(app)" class="app-status not-installed">
+          <p v-if="!app.isInstalled" class="app-status not-installed">
             {{ t('apps.status.not_installed') }}
           </p>
         </div>
@@ -50,18 +26,16 @@
     </div>
 
     <div v-if="!loading && apps.length === 0" class="empty-state">
-      <Smartphone :size="64" class="empty-icon" />
       <p class="empty-text">{{ emptyText }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
-import { Smartphone, ChevronRight, Check } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { ChevronRight, Check } from 'lucide-vue-next'
 import { useConfigStore } from '../../stores/config'
 import { useI18n } from '../../utils/i18n'
-import { useAppIcons } from '../../composables/useAppIcons'
 import type { InstalledApp } from '../../types'
 
 const props = defineProps<{
@@ -74,40 +48,17 @@ const emit = defineEmits<{ select: [InstalledApp] }>()
 
 const { t } = useI18n()
 const configStore = useConfigStore()
-const { appIcons, iconLoaded, onIconLoad, onIconError, setupIconObserver, teardownIconObserver, preloadVisibleIcons } =
-  useAppIcons()
 
-const isConfigured = (packageName: string) => configStore.isPackageConfigured(packageName)
-const isInstalled = (app: InstalledApp) => app.installed !== false
+// 使用computed缓存应用的状态信息，避免在模板中重复计算
+const appsWithStatus = computed(() => {
+  return props.apps.map(app => ({
+    ...app,
+    isConfigured: configStore.packageConfigMap.has(app.packageName),
+    isInstalled: app.installed !== false
+  }))
+})
 
 const loading = computed(() => props.loading)
-
-// 监听应用列表变化，预加载可见区域的图标
-watch(
-  () => props.apps,
-  async (newApps) => {
-    if (newApps && newApps.length > 0) {
-      await nextTick()
-      setupIconObserver()
-      // 预加载可见区域的图标
-      const packageNames = newApps.map(app => app.packageName)
-      await preloadVisibleIcons(packageNames)
-    }
-  },
-  { immediate: true }
-)
-
-onMounted(() => {
-  if (props.apps && props.apps.length > 0) {
-    // 预加载可见区域的图标
-    const packageNames = props.apps.map(app => app.packageName)
-    preloadVisibleIcons(packageNames)
-  }
-})
-
-onUnmounted(() => {
-  teardownIconObserver()
-})
 </script>
 
 <style scoped>
@@ -133,56 +84,6 @@ onUnmounted(() => {
 .app-card:active {
   transform: scale(0.98);
   box-shadow: 0 1px 4px var(--shadow);
-}
-
-.app-icon-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  border-radius: 0.75rem;
-  overflow: hidden;
-}
-
-.icon-loader {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, var(--card-bg), var(--border), var(--card-bg));
-  background-size: 200% 100%;
-  animation: shimmer 1.2s infinite linear;
-  border-radius: 0.75rem;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.app-icon-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 0.75rem;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.app-icon-img.loaded {
-  opacity: 1;
-}
-
-.app-icon-fallback {
-  color: var(--primary);
 }
 
 .app-info {
@@ -253,12 +154,6 @@ onUnmounted(() => {
   justify-content: center;
   padding: 3rem 1rem;
   text-align: center;
-}
-
-.empty-icon {
-  color: var(--text-secondary);
-  opacity: 0.3;
-  margin-bottom: 1rem;
 }
 
 .empty-text {

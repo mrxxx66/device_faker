@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { InstalledApp } from '../types'
 import { getInstalledApps } from '../utils/ksu'
 
@@ -8,6 +8,18 @@ export const useAppsStore = defineStore('apps', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const searchQuery = ref('')
+
+  // 计算过滤后的应用列表
+  const filteredApps = computed(() => {
+    if (!searchQuery.value) {
+      return installedApps.value
+    }
+    const q = searchQuery.value.toLowerCase()
+    return installedApps.value.filter(
+      (app: InstalledApp) =>
+        app.packageName.toLowerCase().includes(q) || app.appName.toLowerCase().includes(q)
+    )
+  })
 
   // 加载已安装应用列表
   async function loadInstalledApps() {
@@ -30,25 +42,15 @@ export const useAppsStore = defineStore('apps', () => {
     searchQuery.value = query
   }
 
-  // 获取过滤后的应用列表
-  function getFilteredApps(): InstalledApp[] {
-    if (!searchQuery.value) {
-      return installedApps.value
-    }
-    const q = searchQuery.value.toLowerCase()
-    return installedApps.value.filter(
-      (app: InstalledApp) =>
-        app.packageName.toLowerCase().includes(q) || app.appName.toLowerCase().includes(q)
-    )
-  }
-
   return {
     installedApps,
+    filteredApps, // 返回计算后的过滤列表
     loading,
     error,
     searchQuery,
     loadInstalledApps,
     searchApps,
-    getFilteredApps,
+    // 保留原来的函数用于兼容性
+    getFilteredApps: () => filteredApps.value,
   }
 })

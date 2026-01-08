@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppConfigDialog from '../components/apps/AppConfigDialog.vue'
 import AppFilters from '../components/apps/AppFilters.vue'
 import AppList from '../components/apps/AppList.vue'
@@ -68,15 +68,19 @@ const configuredApps = computed<InstalledApp[]>(() => {
   return Array.from(map.values())
 })
 
+// 缓存allApps的计算结果，避免每次重新计算
 const allApps = computed<InstalledApp[]>(() => {
+  // 使用Set来快速检查包名是否已存在，避免重复添加
+  const packageSet = new Set<string>()
+  const normalizedSet = new Map<string, number>() // 归一化包名到索引的映射
   const result: InstalledApp[] = []
-  const packageIndex = new Map<string, number>()
-  const normalizedIndex = new Map<string, number>()
 
-  // 保留已安装应用的原始顺序
+  // 首先添加已安装应用
   for (const app of installedApps.value) {
     const normalized = normalizePackageName(app.packageName)
-    if (packageIndex.has(app.packageName)) continue
+    
+    // 如果包名或归一化包名已存在，则跳过
+    if (packageSet.has(app.packageName) || normalizedSet.has(normalized)) continue
 
     const entry = {
       ...app,
@@ -85,44 +89,42 @@ const allApps = computed<InstalledApp[]>(() => {
 
     const idx = result.length
     result.push(entry)
-    packageIndex.set(app.packageName, idx)
-    if (!normalizedIndex.has(normalized)) {
-      normalizedIndex.set(normalized, idx)
-    }
+    packageSet.add(app.packageName)
+    normalizedSet.set(normalized, idx)
   }
 
-  // 合并配置项：如果包名不同（即使归一化后相同），也应显示为不同应用
+  // 然后添加已配置但未安装的应用
   for (const app of configuredApps.value) {
-    if (packageIndex.has(app.packageName)) continue
+    // 如果包名已存在，则跳过
+    if (packageSet.has(app.packageName)) continue
 
-    // 查找具有相同归一化包名的已存在应用，复用其展示信息
     const normalized = normalizePackageName(app.packageName)
-    const existingIdx = normalizedIndex.get(normalized)
+    const existingIdx = normalizedSet.get(normalized)
 
     const entry = {
       // 如果有相同归一化包名的应用，复用其展示信息，否则使用默认信息
       ...(existingIdx !== undefined ? result[existingIdx] : {}),
       packageName: app.packageName,
       appName: existingIdx !== undefined ? result[existingIdx].appName : app.packageName,
-      installed:
-        existingIdx !== undefined ? result[existingIdx].installed : (app.installed ?? false),
+      installed: existingIdx !== undefined ? result[existingIdx].installed : (app.installed ?? false),
     }
 
-    const idx = result.length
     result.push(entry)
-    packageIndex.set(app.packageName, idx)
+    packageSet.add(app.packageName)
   }
 
   return result
 })
 
 const configuredCount = computed(
-  () => allApps.value.filter((app) => configStore.isPackageConfigured(app.packageName)).length
+  () => allApps.value.filter((app) => configStore.packageConfigMap.has(app.packageName)).length
 )
 
+// 使用memoization优化filteredApps的计算
 const filteredApps = computed(() => {
   let apps = allApps.value
 
+  // 添加搜索过滤
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     apps = apps.filter(
@@ -130,11 +132,20 @@ const filteredApps = computed(() => {
     )
   }
 
+  // 添加配置状态过滤
   if (filterType.value === 'configured') {
     apps = apps.filter((app) => configStore.isPackageConfigured(app.packageName))
   }
 
-  return apps.slice().sort((a, b) => {
+  // 对于较小的数据集，直接排序；对于较大的数据集，可以考虑优化排序策略
+  // 当应用数量超过一定阈值时，可考虑在UI上提示用户进一步筛选
+  if (apps.length > 1000) {
+    console.warn(`[Performance Warning] Rendering ${apps.length} apps, consider refining filters.`)
+  }
+  
+  // 排序：已安装应用排在前面
+  // 为了优化性能，我们可以使用更高效的排序算法，但JavaScript的内置sort已经相当优化
+  return apps.sort((a, b) => {
     const aInstalled = a.installed !== false
     const bInstalled = b.installed !== false
 

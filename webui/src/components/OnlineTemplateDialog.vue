@@ -196,16 +196,26 @@ async function loadTemplates() {
     templates.value = onlineTemplates
     toast(t('templates.online.toasts.list_loaded'))
 
-    // 后台异步下载模板内容
+    // 限制并发下载数量以优化性能
+    const CONCURRENT_LIMIT = 3
     let successCount = 0
     let failCount = 0
 
-    Promise.all(
-      onlineTemplates.map(async (t, index) => {
+    // 分批处理模板下载
+    const batches = []
+    for (let i = 0; i < onlineTemplates.length; i += CONCURRENT_LIMIT) {
+      batches.push(onlineTemplates.slice(i, i + CONCURRENT_LIMIT))
+    }
+
+    for (const batch of batches) {
+      const batchPromises = batch.map(async (t, globalIndex) => {
         try {
           const template = await downloadTemplate(t)
           if (template) {
-            templates.value[index] = { ...t, template }
+            // 使用 Vue 的响应式 API 更新特定索引的值
+            templates.value = templates.value.map((item, idx) => 
+              idx === globalIndex ? { ...item, template } : item
+            )
             successCount++
           } else {
             failCount++
@@ -214,14 +224,17 @@ async function loadTemplates() {
           failCount++
         }
       })
-    ).then(() => {
-      if (successCount > 0) {
-        toast(t('templates.online.toasts.content_loaded', { count: successCount }))
-      }
-      if (failCount > 0) {
-        toast(t('templates.online.toasts.content_failed', { count: failCount }))
-      }
-    })
+
+      // 等待当前批次完成后再处理下一批
+      await Promise.all(batchPromises)
+    }
+
+    if (successCount > 0) {
+      toast(t('templates.online.toasts.content_loaded', { count: successCount }))
+    }
+    if (failCount > 0) {
+      toast(t('templates.online.toasts.content_failed', { count: failCount }))
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : t('templates.online.errors.load_failed')
     toast(t('templates.online.toasts.load_failed', { error: error.value }))
@@ -524,7 +537,7 @@ watch(
 }
 
 @media (prefers-color-scheme: dark) {
-  .online-template-modal {
+  online-template-modal {
     backdrop-filter: blur(12px) saturate(120%) !important;
     -webkit-backdrop-filter: blur(12px) saturate(120%) !important;
     background-color: rgba(0, 0, 0, 0.4) !important;

@@ -279,7 +279,12 @@ async function startConversion() {
     await writeFile(tempInputPath, content)
 
     // 2. Run conversion CLI
-    await execCommand(`${cliPath} convert -i ${tempInputPath} -o ${tempOutputPath}`)
+    const execResult = await execCommand(`${cliPath} convert -i ${tempInputPath} -o ${tempOutputPath}`)
+    
+    // Check if command was successful
+    if (execResult.code !== 0) {
+      throw new Error(`CLI command failed: ${execResult.stderr || 'Unknown error'}`)
+    }
 
     // 3. Read output
     const outputContent = await readFile(tempOutputPath)
@@ -289,8 +294,8 @@ async function startConversion() {
     let parsed: any
     try {
       parsed = parseToml(outputContent)
-    } catch {
-      throw new Error('Invalid TOML output from CLI')
+    } catch (parseErr) {
+      throw new Error(`Invalid TOML output from CLI: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`)
     }
 
     let templateData: Template | null = null
@@ -354,16 +359,22 @@ async function startConversion() {
     // Close input dialog and show result dialog
     inputDialogVisible.value = false
     convertDialogVisible.value = true
-
-    // Cleanup
-    await execCommand(`rm ${tempInputPath} ${tempOutputPath}`)
   } catch (err) {
     toast(
       `${t('settings.messages.convert_failed')}: ${err instanceof Error ? err.message : String(err)}`
     )
-    console.error(err)
+    console.error('Conversion error:', err)
   } finally {
     converting.value = false
+    
+    // Cleanup temp files using a separate thread to avoid blocking UI
+    setTimeout(async () => {
+      try {
+        await execCommand('rm -f /data/local/tmp/device_faker_convert_input.prop /data/local/tmp/device_faker_convert_output.toml')
+      } catch (cleanupErr) {
+        console.warn('Failed to clean up temp files:', cleanupErr)
+      }
+    }, 0)
   }
 }
 
