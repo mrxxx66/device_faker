@@ -98,16 +98,22 @@ jobs:
           name: device_faker
           path: module/
 
+      - name: Extract version information
+        id: extract_version
+        run: |
+          VERSION=$(grep '^version=' module/module.prop | cut -d'=' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ZIP_FILENAME=device_faker-$VERSION.zip" >> $GITHUB_ENV
+
       - name: Create release directory
         run: |
           mkdir -p release
-          zip -r release/device-faker-module-$(date +%Y%m%d_%H%M%S).zip module/
+          zip -r "release/${{ env.ZIP_FILENAME }}" module/
 
       - name: Get release file name
         run: |
-          RELEASE_FILE=$(ls release/ | head -n 1)
-          echo "RELEASE_FILE=$RELEASE_FILE" >> $GITHUB_ENV
-          
+          echo "RELEASE_FILE=${{ env.ZIP_FILENAME }}" >> $GITHUB_ENV
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -141,6 +147,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/${{ env.RELEASE_FILE }}
-          asset_name: ${{ env.RELEASE_FILE }}
+          asset_path: ./release/*.zip
+          asset_name: device-faker-module-${{ github.ref_name }}.zip
           asset_content_type: application/zip
