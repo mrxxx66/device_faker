@@ -86,7 +86,8 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    # 修改条件，只在以 'v' 开头的标签时才创建 Release
+    if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
       - name: Checkout repository
@@ -114,6 +115,13 @@ jobs:
         run: |
           echo "RELEASE_FILE=${{ env.ZIP_FILENAME }}" >> $GITHUB_ENV
 
+      - name: Validate tag name
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "ERROR: Cannot create release with tag name 'main'"
+            exit 1
+          fi
+          
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -136,7 +144,7 @@ jobs:
             ### Installation
             1. Flash the zip file in Magisk Manager or KernelSU Manager
             2. Reboot your device
-            3. Configure through the WebUI or config.toml
+            3. Separate configuration through the WebUI or config.toml
             
             ### Changelog
             See the [commits](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for a list of changes since the last release.
@@ -147,6 +155,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/*.zip
-          asset_name: device-faker-module-${{ github.ref_name }}.zip
+          asset_path: ./release/${{ env.RELEASE_FILE }}
+          asset_name: ${{ env.RELEASE_FILE }}
           asset_content_type: application/zip
