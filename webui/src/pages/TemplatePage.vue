@@ -4,10 +4,10 @@
       <h2 class="page-title">{{ t('templates.title') }}</h2>
       <el-button-group>
         <el-button type="primary" @click="showCreateTemplateDialog()">
-          {{ t('templates.create_btn') }}
+          {{ t('templates.actions.new') }}
         </el-button>
         <el-button type="primary" @click="showOnlineTemplateDialog()">
-          {{ t('templates.online_btn') }}
+          {{ t('templates.actions.online') }}
         </el-button>
       </el-button-group>
     </div>
