@@ -6,7 +6,7 @@
 
 import os
 import zipfile
-import datetime
+import re
 
 def convert_to_lf(file_path):
     """将文件转换为 LF 换行符"""
@@ -19,6 +19,23 @@ def convert_to_lf(file_path):
     with open(file_path, 'wb') as f:
         f.write(content)
 
+def get_version_from_prop():
+    """从 module.prop 文件中读取版本号"""
+    prop_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "module", "module.prop")
+    if not os.path.exists(prop_file_path):
+        raise FileNotFoundError(f"module.prop not found at {prop_file_path}")
+    
+    with open(prop_file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+        # 使用正则表达式查找版本号
+        version_match = re.search(r'^version=(.+)$', content, re.MULTILINE)
+        if version_match:
+            version = version_match.group(1).strip()
+            # 移除可能的 "v" 前缀
+            return version.lstrip('vV')
+        else:
+            raise ValueError("Version not found in module.prop")
+
 def create_magisk_module_zip():
     """创建 Magisk 模块 ZIP 包"""
     project_root = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +44,18 @@ def create_magisk_module_zip():
     
     # 创建 output 目录（如果不存在）
     os.makedirs(output_dir, exist_ok=True)
+    
+    # 从 module.prop 获取版本号
+    try:
+        version = get_version_from_prop()
+        zip_filename = f"device_faker-v{version}.zip"
+        print(f"检测到版本: v{version}")
+    except (FileNotFoundError, ValueError) as e:
+        print(f"读取版本号失败: {e}, 使用默认文件名")
+        # 如果读取版本失败，回退到时间戳
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        zip_filename = f"device_faker_{timestamp}.zip"
     
     # 转换所有 .sh 文件为 LF 换行符
     print("正在处理 .sh 文件换行符...")
@@ -37,9 +66,6 @@ def create_magisk_module_zip():
                 convert_to_lf(file_path)
                 print(f"  转换: {os.path.relpath(file_path, module_dir)}")
     
-    # 生成带时间戳的 ZIP 文件名
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    zip_filename = f"device_faker_{timestamp}.zip"
     zip_path = os.path.join(output_dir, zip_filename)
     
     print(f"\n开始打包 Magisk 模块...")
